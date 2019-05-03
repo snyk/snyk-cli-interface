@@ -14,7 +14,7 @@ script:
   - npm test
 jobs:
   include:
-    - stage: Release
+    - stage: npm release
       node_js: "10"
       script: skip
       after_success:

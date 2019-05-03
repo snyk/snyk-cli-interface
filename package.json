@@ -1,5 +1,5 @@
 {
-  "name": "snyk-cli-interface",
+  "name": "@snyk/cli-interface",
   "description": "Snyk CLI interface definitions",
   "homepage": "https://github.com/snyk/snyk-cli-interface",
   "repository": {
