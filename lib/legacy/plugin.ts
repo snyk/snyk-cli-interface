@@ -1,11 +1,10 @@
 import { DepTree, ScannedProject } from './common';
 
-// The return type of inspect() depends on the multiDepRoots flag.
-export type Inspect = (
-  root: string,
-  targetFile: string,
-  options?: SingleRootInspectOptions | MultiRootsInspectOptions,
-) => Promise<SinglePackageResult | MultiProjectResult>;
+export interface Inspect {
+  async (root: string, targetFile: string, options?: SingleRootInspectOptions): Promise<SinglePackageResult>;
+  async (root: string, targetFile: string, options?: MultiRootsInspectOptions): Promise<MultiProjectResult>;
+  async (root: string, targetFile: string, options?: SingleRootInspectOptions | MultiRootsInspectOptions): Promise<SinglePackageResult | MultiProjectResult>;
+}
 
 export interface BaseInspectOptions {
   dev?: boolean;
@@ -19,7 +18,7 @@ export interface BaseInspectOptions {
 export interface SingleRootInspectOptions extends BaseInspectOptions {
   // Return the information not on the main project,
   // but on the specific sub-project defined in the build.
-  'gradle-sub-project'?: string;
+  subProject?: string;
 }
 
 export interface MultiRootsInspectOptions extends BaseInspectOptions {
@@ -42,7 +41,9 @@ export interface PluginMetadata {
   targetFile?: string;
 
   // Per-plugin custom metadata
-  meta: {};
+  meta: {
+    allSubProjectNames?: string[];
+  };
 }
 
 // Legacy result type. Will be deprecated soon.
