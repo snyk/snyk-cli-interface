@@ -1,9 +1,9 @@
-import { DepTree, ScannedProject } from './common';
+import { DepTree, ScannedProject, SupportedPackageManagers } from './common';
 
-export interface Inspect {
-  async (root: string, targetFile: string, options?: SingleRootInspectOptions): Promise<SinglePackageResult>;
-  async (root: string, targetFile: string, options?: MultiRootsInspectOptions): Promise<MultiProjectResult>;
-  async (root: string, targetFile: string, options?: SingleRootInspectOptions | MultiRootsInspectOptions): Promise<SinglePackageResult | MultiProjectResult>;
+export interface Plugin {
+  inspect(root: string, targetFile?: string, options?: SingleSubprojectInspectOptions): Promise<SinglePackageResult>;
+  inspect(root: string, targetFile?: string, options?: MultiSubprojectInspectOptions): Promise<MultiProjectResult>;
+  inspect(root: string, targetFile?: string, options?: InspectOptions): Promise<InspectResult>;
 }
 
 export interface BaseInspectOptions {
@@ -15,13 +15,13 @@ export interface BaseInspectOptions {
   args?: string[];
 }
 
-export interface SingleRootInspectOptions extends BaseInspectOptions {
+export interface SingleSubprojectInspectOptions extends BaseInspectOptions {
   // Return the information not on the main project,
   // but on the specific sub-project defined in the build.
   subProject?: string;
 }
 
-export interface MultiRootsInspectOptions extends BaseInspectOptions {
+export interface MultiSubprojectInspectOptions extends BaseInspectOptions {
 
   // Return multiple "subprojects" as a MultiProjectResult.
   // Sub-projects correspond to sub-projects in Gradle or projects in a Yarn workspace.
@@ -32,6 +32,15 @@ export interface MultiRootsInspectOptions extends BaseInspectOptions {
   allSubProjects: true;
 }
 
+export type InspectOptions = SingleSubprojectInspectOptions | MultiSubprojectInspectOptions;
+
+export type InspectResult = SinglePackageResult | MultiProjectResult;
+
+export function isMultiSubProject(options: InspectOptions):
+    options is MultiSubprojectInspectOptions {
+  return (options as MultiSubprojectInspectOptions).allSubProjects;
+}
+
 export interface PluginMetadata {
   name: string;
   runtime: string;
@@ -40,10 +49,16 @@ export interface PluginMetadata {
   // Note: can be missing, see targetFileFilteredForCompatibility
   targetFile?: string;
 
+  packageManager?: SupportedPackageManagers;
+
   // Per-plugin custom metadata
-  meta: {
+  meta?: {
     allSubProjectNames?: string[];
   };
+
+  // Docker-related fields
+  dockerImageId?: any;
+  imageLayers?: any;
 }
 
 // Legacy result type. Will be deprecated soon.
@@ -57,4 +72,8 @@ export interface MultiProjectResult {
 
   // NOTE: old versions of snyk-gradle-plugin have used `depRoots`
   scannedProjects: ScannedProject[];
+}
+
+export function isMultiResult(res: InspectResult): res is MultiProjectResult {
+  return !!(res as MultiProjectResult).scannedProjects;
 }

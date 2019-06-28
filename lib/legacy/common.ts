@@ -13,6 +13,19 @@ export interface DepTree extends DepTreeDep {
     name: string;
     version: string;
   };
+  labels?: {
+    [key: string]: string;
+
+    // Known keys:
+    // pruned: identical subtree already presents in the parent node.
+    //         See --prune-repeated-subdependencies flag.
+  };
+
+  // TODO: clarify which of these extra files are actually needed
+  targetFile?: string;
+  policy?: string;
+  docker?: any;
+  files?: any;
 }
 
 export interface ScannedProject {
@@ -25,3 +38,7 @@ export interface ScannedProject {
 
   meta?: any; // TODO(BST-542): decide on the format
 }
+
+export type SupportedPackageManagers = 'rubygems' | 'npm' | 'yarn' |
+'maven' | 'pip' | 'sbt' | 'gradle' | 'golangdep' | 'govendor' | 'gomodules' |
+'nuget' | 'paket' | 'composer';
