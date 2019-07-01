@@ -6,6 +6,21 @@ export interface Plugin {
   inspect(root: string, targetFile?: string, options?: InspectOptions): Promise<InspectResult>;
 }
 
+export interface SingleSubprojectPlugin {
+  inspect(root: string, targetFile?: string, options?: SingleSubprojectInspectOptions): Promise<SinglePackageResult>;
+  pluginName(): string;
+}
+
+export function adaptSingleProjectPlugin(plugin: SingleSubprojectPlugin): Plugin {
+  return { inspect: (root: string, targetFile?: string, options?: InspectOptions) => {
+    if (options && isMultiSubProject(options)) {
+      throw new Error(`Plugin ${plugin.pluginName()} does not support scanning multiple sub-projects`);
+    } else {
+      return plugin.inspect(root, targetFile, options);
+    }
+  }} as Plugin;
+}
+
 export interface BaseInspectOptions {
   dev?: boolean;
 
