@@ -1,20 +1,32 @@
 import { DepTree, ScannedProject, SupportedPackageManagers } from './common';
 
-export interface Plugin {
-  inspect(root: string, targetFile?: string, options?: SingleSubprojectInspectOptions): Promise<SinglePackageResult>;
-  inspect(root: string, targetFile?: string, options?: MultiSubprojectInspectOptions): Promise<MultiProjectResult>;
-  inspect(root: string, targetFile?: string, options?: InspectOptions): Promise<InspectResult>;
-}
+// Interface definitions for DepTree-returning dependency analysis plugins for Snyk CLI.
 
+// Simple plugins.
 export interface SingleSubprojectPlugin {
   inspect(root: string, targetFile?: string, options?: SingleSubprojectInspectOptions): Promise<SinglePackageResult>;
-  pluginName(): string;
+
+  // Recommended, for introspection / debugging.
+  // Should ideally be required, but then all the implementations and test fakes will have to change.
+  pluginName?(): string;
+}
+
+// New-style plugins that can return multiple results (e.g. Gradle).
+export interface Plugin extends SingleSubprojectPlugin {
+  // Actual function should implement this
+  inspect(root: string, targetFile?: string, options?: InspectOptions): Promise<InspectResult>;
+
+  // But we also guarantee that for Single-/Multiple- options we produce Single-/Multiple- result.
+  // The actual implementations should include these two lines to confirm the guarantee.
+  inspect(root: string, targetFile?: string, options?: SingleSubprojectInspectOptions): Promise<SinglePackageResult>;
+  inspect(root: string, targetFile?: string, options?: MultiSubprojectInspectOptions): Promise<MultiProjectResult>;
 }
 
 export function adaptSingleProjectPlugin(plugin: SingleSubprojectPlugin): Plugin {
   return { inspect: (root: string, targetFile?: string, options?: InspectOptions) => {
     if (options && isMultiSubProject(options)) {
-      throw new Error(`Plugin ${plugin.pluginName()} does not support scanning multiple sub-projects`);
+      const name = plugin.pluginName ? plugin.pluginName() : '[unknown]';
+      throw new Error(`Plugin ${name} does not support scanning multiple sub-projects`);
     } else {
       return plugin.inspect(root, targetFile, options);
     }
@@ -22,9 +34,10 @@ export function adaptSingleProjectPlugin(plugin: SingleSubprojectPlugin): Plugin
 }
 
 export interface BaseInspectOptions {
+  // Include dev dependencies
   dev?: boolean;
 
-  // Additional command line arguments to Gradle,
+  // Additional command line arguments to the underlying tool,
   // supplied after "--" to the Snyk CLI.
   // E.g. --configuration=foo
   args?: string[];
@@ -40,8 +53,8 @@ export interface MultiSubprojectInspectOptions extends BaseInspectOptions {
 
   // Return multiple "subprojects" as a MultiProjectResult.
   // Sub-projects correspond to sub-projects in Gradle or projects in a Yarn workspace.
-  // Eventually, this flag will be an implicit default.
-  // For now, plugins return SingleDepRootResult by default.
+  // Eventually, this flag will be an implicit default and all the plugins
+  // will return MultiProjectResult.
 
   // NOTE: old versions of snyk-gradle-plugin have used `multiDepRoots`
   allSubProjects: true;
@@ -58,7 +71,7 @@ export function isMultiSubProject(options: InspectOptions):
 
 export interface PluginMetadata {
   name: string;
-  runtime: string;
+  runtime?: string;
 
   // TODO(BST-542): remove, DepRoot.targetFile to be used instead
   // Note: can be missing, see targetFileFilteredForCompatibility
@@ -76,7 +89,6 @@ export interface PluginMetadata {
   imageLayers?: any;
 }
 
-// Legacy result type. Will be deprecated soon.
 export interface SinglePackageResult {
   plugin: PluginMetadata;
   package: DepTree;
