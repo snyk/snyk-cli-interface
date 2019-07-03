@@ -39,6 +39,13 @@ export interface ScannedProject {
   meta?: any; // TODO(BST-542): decide on the format
 }
 
-export type SupportedPackageManagers = 'rubygems' | 'npm' | 'yarn' |
-'maven' | 'pip' | 'sbt' | 'gradle' | 'golangdep' | 'govendor' | 'gomodules' |
-'nuget' | 'paket' | 'composer';
+export type SupportedPackageManagers =
+  'rubygems' | // Ruby
+  'npm' | 'yarn' | // Node.js
+  'maven' | 'sbt' | 'gradle' | // JVM
+  'golangdep' | 'govendor' | 'gomodules' | // Go
+  'pip' | // Python
+  'nuget' | 'paket' | // .Net
+  'composer' | // PHP
+  'rpm' | 'apk' | 'deb' | 'dockerfile' // Docker (Linux)
+  ;
