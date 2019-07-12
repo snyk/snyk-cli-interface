@@ -9,6 +9,8 @@ export interface SingleSubprojectPlugin {
   // Recommended, for introspection / debugging.
   // Should ideally be required, but then all the implementations and test fakes will have to change.
   pluginName?(): string;
+
+  flags?(): FlagSpecs;
 }
 
 // New-style plugins that can return multiple results (e.g. Gradle).
@@ -103,4 +105,37 @@ export interface MultiProjectResult {
 
 export function isMultiResult(res: InspectResult): res is MultiProjectResult {
   return !!(res as MultiProjectResult).scannedProjects;
+}
+
+// The specification for plugin-specific user-visible flags (e.g. those that should be supplied via the CLI).
+// Note that a plugin can also have other, implicitly provided arguments.
+export interface FlagSpecs {
+  // Note: the flag name here is specified in `camelCase`, to conform to Javascript variable/field naming standards.
+  // The flag specified in the command line will be in the `--dash-case`, and the CLI argument parses should convert
+  // all the flag names to camelCase automatically.
+  [nameCamelCase: string]: FlagSpec;
+}
+
+export interface FlagSpec {
+  // Flag type.
+  // Boolean flags can be specified as `--flag-name`
+  // String and numeric flags as `--flag-name=value`
+  // Note: as of the moment of writing, `--flag-name value` syntax is not supported.
+  type: 'boolean' | 'string' | 'number';
+
+  // Plain text documentation, to be presented via `snyk help`.
+  // Some Markdown elements might be allowed, but they are not guaranteed to render nicely.
+  docPlainText: string;
+
+  // Default flag value. If not provided, or explicitly described in the documentation,
+  // should be generally assumed falsy for booleans, and "unconstrained" for numeric-
+  // and string-based constraints.
+  default?: boolean | string | number;
+
+  // Snyk CLI subcommands that the flag applies to.
+  // By default, it's assumed that it's test, monitor and wizard.
+  subCommands?: string[];
+
+  // A validator function. Throws an error if the argument is invalid.
+  validator?: (x: string) => void;
 }
