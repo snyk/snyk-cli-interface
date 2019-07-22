@@ -13,13 +13,8 @@ export interface SingleSubprojectPlugin {
 
 // New-style plugins that can return multiple results (e.g. Gradle).
 export interface Plugin extends SingleSubprojectPlugin {
-  // Actual function should implement this
-  inspect(root: string, targetFile?: string, options?: InspectOptions): Promise<InspectResult>;
-
-  // But we also guarantee that for Single-/Multiple- options we produce Single-/Multiple- result.
-  // The actual implementations should include these two lines to confirm the guarantee.
-  inspect(root: string, targetFile?: string, options?: SingleSubprojectInspectOptions): Promise<SinglePackageResult>;
-  inspect(root: string, targetFile?: string, options?: MultiSubprojectInspectOptions): Promise<MultiProjectResult>;
+  inspect<T extends InspectOptions>(root: string, targetFile?: string, options?: T):
+    Promise<T extends MultiSubprojectInspectOptions ? MultiProjectResult : SinglePackageResult>;
 }
 
 export function adaptSingleProjectPlugin(plugin: SingleSubprojectPlugin): Plugin {
