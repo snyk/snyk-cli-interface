@@ -4,7 +4,7 @@
       "pretty": true,
       "target": "es2015",
       "lib": [
-        "es2015",
+        "es2015"
       ],
       "module": "commonjs",
       "allowJs": false,
@@ -12,7 +12,7 @@
       "strict": true,
       "declaration": true,
       "importHelpers": true,
-      "noImplicitAny": false // Needed to compile tap and ansi-escapes
+      "noImplicitAny": false
   },
   "include": [
       "./lib/**/*"
