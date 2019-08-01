@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-      "outDir": "./dist",
+      "outDir": ".",
       "pretty": true,
       "target": "es2015",
       "lib": [
@@ -16,5 +16,6 @@
   },
   "include": [
       "./lib/**/*"
-  ]
+  ],
+  "exclude": [],
 }

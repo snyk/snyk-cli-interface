@@ -6,9 +6,11 @@
     "type": "git",
     "url": "https://github.com/snyk/snyk-cli-interface"
   },
-  "main": "dist/index.js",
+  "main": "index.js",
   "files": [
-    "dist"
+    "**/*.d.ts",
+    "**/*.js",
+    "**/*.js.map"
   ],
   "scripts": {
     "build": "tsc",
