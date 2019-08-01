@@ -8,7 +8,9 @@
   },
   "main": "index.ts",
   "files": [
-    "**/*.ts"
+    "**/*.d.ts",
+    "**/*.js",
+    "**/*.js.map"
   ],
   "scripts": {
     "build": "tsc",
