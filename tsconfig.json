@@ -11,10 +11,9 @@
       "sourceMap": true,
       "strict": true,
       "declaration": true,
-      "importHelpers": true,
-      "noImplicitAny": false // Needed to compile tap and ansi-escapes
+      "importHelpers": true
   },
   "include": [
-      "./lib/**/*"
+      "./**/*.ts"
   ]
 }

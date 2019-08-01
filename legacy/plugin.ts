@@ -18,8 +18,16 @@ export interface Plugin extends SingleSubprojectPlugin {
 
   // But we also guarantee that for Single-/Multiple- options we produce Single-/Multiple- result.
   // The actual implementations should include these two declaration lines to confirm the guarantee.
-  inspect(root: string, targetFile?: string, options?: SingleSubprojectInspectOptions): Promise<SinglePackageResult>;
-  inspect(root: string, targetFile: string | undefined, options: MultiSubprojectInspectOptions): Promise<MultiProjectResult>;
+  inspect(
+    root: string,
+    targetFile?: string,
+    options?: SingleSubprojectInspectOptions,
+    ): Promise<SinglePackageResult>;
+  inspect(
+    root: string,
+    targetFile: string | undefined,
+    options: MultiSubprojectInspectOptions,
+    ): Promise<MultiProjectResult>;
 }
 
 export function adaptSingleProjectPlugin(plugin: SingleSubprojectPlugin): Plugin {
