@@ -1,4 +1,5 @@
-import * as pluginInterface from './plugin';
-import * as monitorInterface from './monitor';
+import * as plugin from './plugin';
+import * as monitor from './monitor';
+import * as common from './common';
 
-export {pluginInterface, monitorInterface};
+export {plugin, monitor, common};

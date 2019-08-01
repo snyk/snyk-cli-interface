@@ -1,2 +1,7 @@
-import * as legacy from './legacy';
-export { legacy };
+import {plugin, monitor, common} from './legacy';
+
+export {
+    plugin as legacyPlugin,
+    monitor as legacyMonitor,
+    common as legacyCommon
+}
