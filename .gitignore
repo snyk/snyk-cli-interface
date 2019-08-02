@@ -60,5 +60,10 @@ typings/
 # next.js build output
 .next
 
+# built files
 dist
+*.d.ts
+*.js
+*.js.map
+
 package-lock.json
