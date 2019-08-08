@@ -6,7 +6,7 @@
     "type": "git",
     "url": "https://github.com/snyk/snyk-cli-interface"
   },
-  "main": "index.ts",
+  "main": "index.js",
   "files": [
     "**/*.d.ts",
     "**/*.js",
