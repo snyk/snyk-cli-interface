@@ -4,6 +4,13 @@ export interface DepTreeDep {
   dependencies?: {
     [depName: string]: DepTreeDep,
   };
+  labels?: {
+    [key: string]: string;
+
+    // Known keys:
+    // pruned: identical subtree already presents in the parent node.
+    //         See --prune-repeated-subdependencies flag.
+  };
 }
 
 export interface DepTree extends DepTreeDep {
@@ -12,13 +19,6 @@ export interface DepTree extends DepTreeDep {
   targetOS?: {
     name: string;
     version: string;
-  };
-  labels?: {
-    [key: string]: string;
-
-    // Known keys:
-    // pruned: identical subtree already presents in the parent node.
-    //         See --prune-repeated-subdependencies flag.
   };
 
   // TODO: clarify which of these extra files are actually needed
