@@ -5,7 +5,7 @@ export interface DepTreeDep {
     [depName: string]: DepTreeDep,
   };
   labels?: {
-    [key: string]: string;
+    [key: string]: string | undefined;
 
     // Known keys:
     // pruned: identical subtree already presents in the parent node.
