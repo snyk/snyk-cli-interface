@@ -16,11 +16,13 @@
     "build": "tsc",
     "lint": "tslint --project tsconfig.json --format stylish",
     "prepare": "npm run build",
-    "test": "npm run build && npm run lint"
+    "test": "npm run build && npm run lint && npm run test:compat",
+    "test:compat": "tsc --strict --noEmit ./test/*.ts"
   },
   "author": "snyk.io",
   "license": "Apache-2.0",
   "devDependencies": {
+    "@snyk/dep-graph": "^1.12.0",
     "tslint": "^5.14.0",
     "typescript": "^3.3.4000"
   },

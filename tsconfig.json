@@ -13,6 +13,7 @@
       "importHelpers": true
   },
   "include": [
-      "./**/*.ts"
+      "index.ts",
+      "legacy/**/*.ts"
   ]
 }
