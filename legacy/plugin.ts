@@ -100,6 +100,9 @@ export interface PluginMetadata {
 export interface SinglePackageResult {
   plugin: PluginMetadata;
   package: DepTree;
+  meta?: {
+    gradleProjectName?: string,
+  };
 }
 
 export interface MultiProjectResult {
