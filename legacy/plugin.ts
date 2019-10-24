@@ -89,7 +89,8 @@ export interface PluginMetadata {
 
   // Per-plugin custom metadata
   meta?: {
-    allSubProjectNames?: string[];
+    allSubProjectNames?: string[],
+    versionBuildInfo?: VersionBuildInfo,
   };
 
   // Docker-related fields
@@ -97,11 +98,17 @@ export interface PluginMetadata {
   imageLayers?: any;
 }
 
+export interface VersionBuildInfo {
+  gradleVersion: string;
+  metaBuildVersion: { [index: string]: string };
+}
+
 export interface SinglePackageResult {
   plugin: PluginMetadata;
   package: DepTree;
   meta?: {
     gradleProjectName?: string,
+    versionBuildInfo?: VersionBuildInfo,
   };
 }
 
