@@ -44,6 +44,8 @@ export function adaptSingleProjectPlugin(plugin: SingleSubprojectPlugin): Plugin
 export interface BaseInspectOptions {
   // Include dev dependencies
   dev?: boolean;
+  // Skip any deps we could not resolve, and continue
+  skipUnresolved?: boolean;
 
   // Additional command line arguments to the underlying tool,
   // supplied after "--" to the Snyk CLI.
