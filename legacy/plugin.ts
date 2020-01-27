@@ -101,7 +101,7 @@ export interface PluginMetadata {
 }
 
 export interface VersionBuildInfo {
-  gradleVersion: string;
+  gradleVersion?: string;
   metaBuildVersion: { [index: string]: string };
 }
 
