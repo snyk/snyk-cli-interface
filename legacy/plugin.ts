@@ -98,6 +98,7 @@ export interface PluginMetadata {
   // Docker-related fields
   dockerImageId?: any;
   imageLayers?: any;
+  packageFormatVersion?: string;
 }
 
 export interface VersionBuildInfo {
