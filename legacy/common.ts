@@ -1,3 +1,5 @@
+import * as graphlib from 'graphlib';
+
 export interface DepTreeDep {
   name?: string; // shouldn't, but might be missing
   version?: string; // shouldn't, but might be missing
@@ -37,6 +39,7 @@ export interface ScannedProject {
   targetFile?: string;
 
   meta?: any; // TODO(BST-542): decide on the format
+  callGraph?: CallGraph;
 }
 
 export type SupportedPackageManagers =
@@ -49,3 +52,5 @@ export type SupportedPackageManagers =
   'composer' | // PHP
   'rpm' | 'apk' | 'deb' | 'dockerfile' // Docker (Linux)
   ;
+
+export type CallGraph = graphlib.Graph;
