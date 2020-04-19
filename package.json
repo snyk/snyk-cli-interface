@@ -21,6 +21,7 @@
   "author": "snyk.io",
   "license": "Apache-2.0",
   "devDependencies": {
+    "@types/graphlib": "^2.1.5",
     "tslint": "^5.14.0",
     "typescript": "^3.3.4000"
   },
