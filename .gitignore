@@ -62,7 +62,8 @@ typings/
 
 # built files
 dist
-*.d.ts
+legacy/*.d.ts
+index.d.ts
 *.js
 *.js.map
 
