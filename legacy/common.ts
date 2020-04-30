@@ -1,4 +1,4 @@
-import * as graphlib from 'graphlib';
+import * as graphlib from '@snyk/graphlib';
 
 export interface DepTreeDep {
   name?: string; // shouldn't, but might be missing
