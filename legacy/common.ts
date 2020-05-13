@@ -1,3 +1,4 @@
+// @ts-ignore
 import * as graphlib from '@snyk/graphlib';
 
 export interface DepTreeDep {
