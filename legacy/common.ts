@@ -1,4 +1,5 @@
 import * as graphlib from '@snyk/graphlib';
+import { DepGraph } from '@snyk/dep-graph';
 
 export interface DepTreeDep {
   name?: string; // shouldn't, but might be missing
@@ -31,7 +32,8 @@ export interface DepTree extends DepTreeDep {
 }
 
 export interface ScannedProject {
-  depTree: DepTree; // to be soon replaced with depGraph
+  depTree?: DepTree; // to be soon replaced with depGraph
+  depGraph?: DepGraph;
 
   // this will eventually become a structure (list) of "build" files,
   // also known as "project roots".

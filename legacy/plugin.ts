@@ -51,6 +51,10 @@ export interface BaseInspectOptions {
   // supplied after "--" to the Snyk CLI.
   // E.g. --configuration=foo
   args?: string[];
+
+  // when true plugin should return a dep-graph
+  // TODO(boost): remove when all plugins support returning dep-graph
+  useDepGraph?: boolean;
 }
 
 export interface SingleSubprojectInspectOptions extends BaseInspectOptions {
