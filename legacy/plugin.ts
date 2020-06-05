@@ -1,4 +1,4 @@
-import { CallGraph, DepTree, ScannedProject, SupportedPackageManagers } from './common';
+import { CallGraph, DepGraph, DepTree, ScannedProject, SupportedPackageManagers } from './common';
 
 // Interface definitions for DepTree-returning dependency analysis plugins for Snyk CLI.
 
@@ -64,7 +64,6 @@ export interface SingleSubprojectInspectOptions extends BaseInspectOptions {
 }
 
 export interface MultiSubprojectInspectOptions extends BaseInspectOptions {
-
   // Return multiple "subprojects" as a MultiProjectResult.
   // Sub-projects correspond to sub-projects in Gradle or projects in a Yarn workspace.
   // Eventually, this flag will be an implicit default and all the plugins
@@ -113,6 +112,7 @@ export interface VersionBuildInfo {
 export interface SinglePackageResult {
   plugin: PluginMetadata;
   package: DepTree;
+  dependencyGraph?: DepGraph;
   callGraph?: CallGraph;
   meta?: {
     gradleProjectName?: string,

@@ -1,6 +1,7 @@
 import * as graphlib from '@snyk/graphlib';
 import { DepGraph } from '@snyk/dep-graph';
 
+export { DepGraph };
 export interface DepTreeDep {
   name?: string; // shouldn't, but might be missing
   version?: string; // shouldn't, but might be missing
