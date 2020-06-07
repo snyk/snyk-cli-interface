@@ -1,9 +1,10 @@
-import { DepTree } from './common';
+import { DepTree, DepGraph } from './common';
 
 export interface MonitorBody {
   meta: MonitorMeta;
   policy: string;
-  package: DepTree;
+  package?: DepTree;
+  dependencyGraph?: DepGraph;
   targetFile: string;
 }
 
