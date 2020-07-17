@@ -1,4 +1,4 @@
-import { CallGraph, DepGraph, DepTree, ScannedProject, SupportedPackageManagers } from './common';
+import { CallGraph, CallGraphResult, DepGraph, DepTree, ScannedProject, SupportedPackageManagers } from './common';
 
 // Interface definitions for DepTree-returning dependency analysis plugins for Snyk CLI.
 
@@ -113,7 +113,7 @@ export interface SinglePackageResult {
   plugin: PluginMetadata;
   package: DepTree;
   dependencyGraph?: DepGraph;
-  callGraph?: CallGraph;
+  callGraph?: CallGraphResult;
   meta?: {
     gradleProjectName?: string,
     versionBuildInfo?: VersionBuildInfo,

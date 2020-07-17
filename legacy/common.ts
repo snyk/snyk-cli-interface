@@ -42,7 +42,7 @@ export interface ScannedProject {
   targetFile?: string;
 
   meta?: any; // TODO(BST-542): decide on the format
-  callGraph?: CallGraph;
+  callGraph?: CallGraphResult;
 }
 
 export type SupportedPackageManagers =
@@ -56,4 +56,11 @@ export type SupportedPackageManagers =
   'rpm' | 'apk' | 'deb' | 'dockerfile' // Docker (Linux)
   ;
 
+export interface CallGraphError {
+  message: string;
+  innerError: Error;
+}
+
 export type CallGraph = graphlib.Graph;
+
+export type CallGraphResult = CallGraph | CallGraphError;
