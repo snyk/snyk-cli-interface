@@ -32,8 +32,25 @@ export interface DepTree extends DepTreeDep {
   files?: any;
 }
 
+export interface ScannedArtifact {
+  type:
+    | 'depTree'
+    | 'depGraph'
+    | 'callGraph'
+    | 'manifestFile'
+    | 'binaries'
+    | 'hashes'
+    | 'dockerLayers';
+  data: any;
+  meta?: { [key: string]: any };
+}
+
 export interface ScannedProject {
-  depTree?: DepTree; // to be soon replaced with depGraph
+  artifacts?: ScannedArtifact[];
+
+  /** @deprecated Use "artifacts" instead. */
+  depTree?: DepTree;
+  /** @deprecated Use "artifacts" instead. */
   depGraph?: DepGraph;
 
   // this will eventually become a structure (list) of "build" files,

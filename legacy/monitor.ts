@@ -1,10 +1,13 @@
-import { DepTree, DepGraph } from './common';
+import { DepTree, DepGraph, ScannedArtifact } from './common';
 
 export interface MonitorBody {
   meta: MonitorMeta;
   policy: string;
+  /** @deprecated - Use "artifacts" instead. */
   package?: DepTree;
+  /** @deprecated - Use "artifacts" instead. */
   dependencyGraph?: DepGraph;
+  artifacts?: ScannedArtifact[];
   targetFile: string;
 }
 
