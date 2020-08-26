@@ -96,6 +96,9 @@ export interface PluginMetadata {
   meta?: {
     allSubProjectNames?: string[],
     versionBuildInfo?: VersionBuildInfo,
+    // returning targetFile in plugin can cause issue with project unique
+    // constraints, returning here when used outside of that.
+    targetFile?: string;
   };
 
   // Docker-related fields
