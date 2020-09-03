@@ -25,6 +25,7 @@
     "typescript": "^3.3.4000"
   },
   "dependencies": {
+    "@snyk/dep-graph": "1.19.4",
     "@types/graphlib": "^2.1.7",
     "tslib": "^1.9.3"
   }
