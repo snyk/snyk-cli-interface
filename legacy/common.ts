@@ -1,4 +1,4 @@
-import * as graphlib from '@snyk/graphlib';
+import * as graphlib from 'graphlib';
 import { DepGraph } from '@snyk/dep-graph';
 
 export { DepGraph };
