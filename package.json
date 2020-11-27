@@ -21,12 +21,14 @@
   "author": "snyk.io",
   "license": "Apache-2.0",
   "devDependencies": {
-    "tslint": "^5.14.0",
-    "typescript": "~3.8.3"
+    "@snyk/dep-graph": "^1",
+    "tslint": "^6",
+    "typescript": "^3"
   },
   "dependencies": {
-    "@snyk/dep-graph": "1.20.0",
-    "@types/graphlib": "^2.1.7",
-    "tslib": "^1.9.3"
+    "@types/graphlib": "^2"
+  },
+  "peerDependencies": {
+    "@snyk/dep-graph": "^1"
   }
 }
