@@ -114,7 +114,7 @@ export interface VersionBuildInfo {
 
 export interface SinglePackageResult {
   plugin: PluginMetadata;
-  package: DepTree;
+  package?: DepTree;
   dependencyGraph?: DepGraph;
   callGraph?: CallGraphResult;
   meta?: {
