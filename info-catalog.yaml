@@ -1,0 +1,17 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  annotations:
+    github.com/project-slug: snyk/snyk-cli-interface
+  description: Interface definitions for interactions between Snyk CLI and associated components
+  tags:
+    - typescript
+  links:
+    - icon: message
+      title: "Team Asks Channel"
+      url: "https://snyk.slack.com/channels/ask-team-hammer"
+  name: snyk-cli-interface
+spec:
+  lifecycle: unknown
+  type: library
+  owner: hammer
