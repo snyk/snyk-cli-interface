@@ -21,7 +21,7 @@
   "author": "snyk.io",
   "license": "Apache-2.0",
   "devDependencies": {
-    "@snyk/dep-graph": "^1",
+    "@snyk/dep-graph": "^2",
     "tslint": "^6",
     "typescript": "^3"
   },
@@ -29,6 +29,6 @@
     "@types/graphlib": "^2"
   },
   "peerDependencies": {
-    "@snyk/dep-graph": "^1"
+    "@snyk/dep-graph": "^2"
   }
 }
