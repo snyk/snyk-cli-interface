@@ -47,16 +47,16 @@ jobs:
 
 workflows:
   version: 2
-  test:
+  ci_cd:
     jobs:
       - test:
           name: Test
           context: nodejs-install
-  release:
-    jobs:
       - release:
           name: Release
           context: nodejs-lib-release
+          requires:
+            - Test
           filters:
             branches:
               only:
