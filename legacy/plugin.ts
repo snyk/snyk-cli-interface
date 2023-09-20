@@ -40,7 +40,7 @@ export function adaptSingleProjectPlugin(plugin: SingleSubprojectPlugin): Plugin
       } else {
         return plugin.inspect(root, targetFile, options);
       }
-    }
+    },
   } as Plugin;
 }
 
