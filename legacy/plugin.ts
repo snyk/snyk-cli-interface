@@ -1,4 +1,4 @@
-import { CallGraph, CallGraphResult, DepGraph, DepTree, ScannedProject, SupportedPackageManagers } from './common';
+import { CallGraphResult, DepGraph, DepTree, ScannedProject, SupportedPackageManagers } from './common';
 
 // Interface definitions for DepTree-returning dependency analysis plugins for Snyk CLI.
 
@@ -22,23 +22,26 @@ export interface Plugin extends SingleSubprojectPlugin {
     root: string,
     targetFile?: string,
     options?: SingleSubprojectInspectOptions,
-    ): Promise<SinglePackageResult>;
+  ): Promise<SinglePackageResult>;
+
   inspect(
     root: string,
     targetFile: string | undefined,
     options: MultiSubprojectInspectOptions,
-    ): Promise<MultiProjectResult>;
+  ): Promise<MultiProjectResult>;
 }
 
 export function adaptSingleProjectPlugin(plugin: SingleSubprojectPlugin): Plugin {
-  return { inspect: (root: string, targetFile?: string, options?: InspectOptions) => {
-    if (options && isMultiSubProject(options)) {
-      const name = plugin.pluginName ? plugin.pluginName() : '[unknown]';
-      throw new Error(`Plugin ${name} does not support scanning multiple sub-projects`);
-    } else {
-      return plugin.inspect(root, targetFile, options);
-    }
-  }} as Plugin;
+  return {
+    inspect: (root: string, targetFile?: string, options?: InspectOptions) => {
+      if (options && isMultiSubProject(options)) {
+        const name = plugin.pluginName ? plugin.pluginName() : '[unknown]';
+        throw new Error(`Plugin ${name} does not support scanning multiple sub-projects`);
+      } else {
+        return plugin.inspect(root, targetFile, options);
+      }
+    },
+  } as Plugin;
 }
 
 export interface BaseInspectOptions {
@@ -78,13 +81,14 @@ export type InspectOptions = SingleSubprojectInspectOptions | MultiSubprojectIns
 export type InspectResult = SinglePackageResult | MultiProjectResult;
 
 export function isMultiSubProject(options: InspectOptions):
-    options is MultiSubprojectInspectOptions {
+  options is MultiSubprojectInspectOptions {
   return (options as MultiSubprojectInspectOptions).allSubProjects;
 }
 
 export interface PluginMetadata {
   name: string;
   runtime?: string;
+  targetRuntime?: string;
 
   // TODO(BST-542): remove, DepRoot.targetFile to be used instead
   // Note: can be missing, see targetFileFilteredForCompatibility
