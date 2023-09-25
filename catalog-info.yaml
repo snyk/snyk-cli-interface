@@ -1,0 +1,11 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: snyk-cli-interface
+  annotations:
+    github.com/project-slug: snyk/snyk-cli-interface
+    github.com/team-slug: snyk/hammerhead
+spec:
+  type: snyk-cli-plugin
+  lifecycle: "-"
+  owner: hammerhead
