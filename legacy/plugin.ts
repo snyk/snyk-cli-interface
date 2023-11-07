@@ -122,6 +122,7 @@ export interface SinglePackageResult {
   dependencyGraph?: DepGraph;
   callGraph?: CallGraphResult;
   meta?: {
+    projectName?: string,
     gradleProjectName?: string,
     versionBuildInfo?: VersionBuildInfo,
   };
