@@ -4,8 +4,8 @@ metadata:
   name: snyk-cli-interface
   annotations:
     github.com/project-slug: snyk/snyk-cli-interface
-    github.com/team-slug: snyk/hammerhead
+    github.com/team-slug: snyk/cli
 spec:
   type: snyk-cli-plugin
   lifecycle: "-"
-  owner: hammerhead
+  owner: cli
