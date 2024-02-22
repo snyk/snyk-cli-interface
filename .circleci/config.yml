@@ -30,7 +30,7 @@ commands:
           command: npx semantic-release
 
 jobs:
-  test:
+  test_and_scan:
     resource_class: small
     executor:
       name: docker-node
@@ -38,9 +38,10 @@ jobs:
       - checkout
       - install
       - prodsec/security_scans:
+          mode: auto
       - test
 
-  release:
+  release_package:
     resource_class: small
     executor:
       name: docker-node
@@ -58,16 +59,17 @@ workflows:
             - snyk-bot-slack
           channel: cli-alerts
 
-      - test:
+      - test_and_scan:
           name: Test and scan
           context: 
             - nodejs-install
             - devex_cli
-      - release:
+
+      - release_package:
           name: Release
           context: nodejs-lib-release
           requires:
-            - Test
+            - test_and_scan
           filters:
             branches:
               only:
