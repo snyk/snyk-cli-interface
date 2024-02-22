@@ -69,7 +69,7 @@ workflows:
           name: Release
           context: nodejs-lib-release
           requires:
-            - test_and_scan
+            - Test and scan
           filters:
             branches:
               only:
