@@ -1,7 +1,7 @@
 version: 2.1
 
 orbs:
-  prodsec: snyk/prodsec-orb@1.0
+  prodsec: snyk/prodsec-orb@1
 
 executors:
   docker-node:
@@ -30,7 +30,16 @@ commands:
           command: npx semantic-release
 
 jobs:
-  test:
+  security_scans:
+    resource_class: small
+    docker:
+      - image: cimg/node:lts
+    steps:
+      - checkout
+      - prodsec/security_scans:
+          mode: auto
+
+  test_and_scan:
     resource_class: small
     executor:
       name: docker-node
@@ -39,7 +48,7 @@ jobs:
       - install
       - test
 
-  release:
+  release_package:
     resource_class: small
     executor:
       name: docker-node
@@ -49,7 +58,6 @@ jobs:
       - release
 
 workflows:
-  version: 2
   ci_cd:
     jobs:
       - prodsec/secrets-scan:
@@ -57,14 +65,21 @@ workflows:
           context:
             - snyk-bot-slack
           channel: cli-alerts
-      - test:
-          name: Test
-          context: nodejs-install
-      - release:
+
+      - security_scans:
+          context: devex_cli
+
+      - test_and_scan:
+          name: Test and scan
+          context: 
+            - nodejs-install
+            - devex_cli
+
+      - release_package:
           name: Release
           context: nodejs-lib-release
           requires:
-            - Test
+            - Test and scan
           filters:
             branches:
               only:
