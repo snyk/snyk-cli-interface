@@ -66,5 +66,3 @@ legacy/*.d.ts
 index.d.ts
 *.js
 *.js.map
-
-package-lock.json
