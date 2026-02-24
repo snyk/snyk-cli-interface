@@ -50,7 +50,7 @@ export type SupportedPackageManagers =
   'npm' | 'yarn' | // Node.js
   'maven' | 'sbt' | 'gradle' | // JVM
   'golangdep' | 'govendor' | 'gomodules' | // Go
-  'pip' | // Python
+  'pip' | 'uv' | // Python
   'nuget' | 'paket' | // .Net
   'composer' | // PHP
   'rpm' | 'apk' | 'deb' | 'dockerfile' // Docker (Linux)
