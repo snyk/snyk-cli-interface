@@ -38,6 +38,7 @@ jobs:
       - checkout
       - prodsec/security_scans:
           mode: auto
+          release-branch: master
 
   test_and_scan:
     resource_class: small
