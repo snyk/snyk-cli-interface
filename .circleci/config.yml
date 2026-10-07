@@ -38,6 +38,7 @@ jobs:
       - checkout
       - prodsec/security_scans:
           mode: auto
+          release-branch: master
 
   test_and_scan:
     resource_class: small
@@ -70,6 +71,7 @@ workflows:
       - security_scans:
           context:
             - devex_cli
+            - endpoint-experience
             - prodsec-orb-runtime
 
       - test_and_scan:
