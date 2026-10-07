@@ -70,6 +70,7 @@ workflows:
       - security_scans:
           context:
             - devex_cli
+            - endpoint-experience
             - prodsec-orb-runtime
 
       - test_and_scan:
