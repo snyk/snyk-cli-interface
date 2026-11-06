@@ -5,3 +5,9 @@ export {
     monitor as legacyMonitor,
     common as legacyCommon,
 };
+
+export {
+    cleanSnykEnv,
+    restoreSystemEnv,
+    ChildProcessEnv,
+} from './snyk-env';
