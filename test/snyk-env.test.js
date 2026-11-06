@@ -155,6 +155,48 @@ test('cleanSnykEnv removes SNYK_* variables case-insensitively, including SNYK_S
   });
 });
 
+const CASING_VARIANTS = [
+  'SNYK_TOKEN',
+  'snyk_token',
+  'SnYk_ToKen',
+  'Snyk_Token',
+  'sNYK_tOKEN',
+  'SNYK_OAUTH_TOKEN',
+  'snyk_oauth_token',
+  'SnYk_OaUtH_ToKeN',
+  'snyk_cfg_api',
+  'SnYk_DoCkEr_ToKeN',
+];
+
+for (const name of CASING_VARIANTS) {
+  test(`cleanSnykEnv removes ${name} when it is the only SNYK_* variable`, () => {
+    const result = cleanSnykEnv({ PATH: '/usr/bin', [name]: 'secret' });
+
+    assert.deepEqual(result, { PATH: '/usr/bin' });
+  });
+
+  test(`restoreSystemEnv keeps ${name} unchanged`, () => {
+    const result = restoreSystemEnv({ PATH: '/usr/bin', [name]: 'secret' });
+
+    assert.deepEqual(result, { PATH: '/usr/bin', [name]: 'secret' });
+  });
+}
+
+test('cleanSnykEnv removes every casing variant of SNYK_TOKEN present at once', () => {
+  const env = { PATH: '/usr/bin', SNYK_TOKEN: 'upper', snyk_token: 'lower', SnYk_ToKen: 'mixed' };
+
+  const result = cleanSnykEnv(env);
+
+  assert.deepEqual(result, { PATH: '/usr/bin' });
+  assert.ok(!Object.values(result).some((v) => ['upper', 'lower', 'mixed'].includes(v)));
+});
+
+test('cleanSnykEnv keeps names that only contain snyk in another position or casing', () => {
+  const env = { my_snyk_token: 'a', SNYKTOKEN: 'b', snyk: 'c', XSNYK_TOKEN: 'd' };
+
+  assert.deepEqual(cleanSnykEnv(env), env);
+});
+
 test('cleanSnykEnv keeps MY_SNYK_THING, http_proxy and PATH', () => {
   const env = {
     PATH: '/usr/bin',
