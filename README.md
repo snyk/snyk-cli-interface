@@ -23,6 +23,25 @@ exports the build files in the root directory, not in dist, to enable "deep impo
 We still have to publish the package using the compiled files, because many tools in Node.js
 ecosystem assume that published libraries should be always in Javascript.
 
+## Sanitizing environments for child processes
+
+Plugins spawn build tools such as Gradle or Maven, which run project code. Two pure helpers
+build the env for those spawns. Both return a new object, never mutate their inputs and never read `process.env`.
+
+* `cleanSnykEnv(env, systemEnv?)`: for third-party child processes. Restores the user's own proxy and OpenSSL
+  settings from `SNYK_SYSTEM_*` and removes every `SNYK_*` variable (case-insensitive).
+* `restoreSystemEnv(env, systemEnv?)`: for Snyk's own child processes. Undoes the CLI's proxy and OpenSSL
+  overrides and keeps `SNYK_*` variables.
+
+Pass `process.env` as `systemEnv` when `env` is built from a caller-supplied object:
+
+    import { spawn } from 'child_process';
+    import { cleanSnykEnv } from '@snyk/cli-interface';
+
+    spawn(cmd, args, { env: cleanSnykEnv({ ...process.env, ...extra }) });
+    // For a caller-supplied env, read the user's SNYK_SYSTEM_* values from process.env:
+    // cleanSnykEnv(callerEnv, process.env)
+
 ## Contributing
 
 To ensure the long-term stability and quality of this project, we are moving to a closed-contribution model effective August 2025. This change allows our core team to focus on a centralized development roadmap and rigorous quality assurance, which is essential for a component with such extensive usage.

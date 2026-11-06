@@ -64,5 +64,10 @@ typings/
 dist
 legacy/*.d.ts
 index.d.ts
+snyk-env.d.ts
 *.js
 *.js.map
+
+# Hand-written tests (committed; the compiled build output above is not)
+!test/
+!test/*.js

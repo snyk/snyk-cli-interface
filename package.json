@@ -10,13 +10,14 @@
   "files": [
     "**/*.d.ts",
     "**/*.js",
-    "**/*.js.map"
+    "**/*.js.map",
+    "!test/**"
   ],
   "scripts": {
     "build": "tsc",
     "lint": "tslint --project tsconfig.json --format stylish",
     "prepare": "npm run build",
-    "test": "npm run build && npm run lint"
+    "test": "npm run build && npm run lint && node --test test/snyk-env.test.js"
   },
   "author": "snyk.io",
   "license": "Apache-2.0",
