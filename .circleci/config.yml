@@ -2,6 +2,7 @@ version: 2.1
 
 orbs:
   prodsec: snyk/prodsec-orb@1
+  win: circleci/windows@5.0.0
 
 executors:
   docker-node:
@@ -49,6 +50,27 @@ jobs:
       - install
       - test
 
+  test_windows:
+    executor:
+      name: win/default
+      size: medium
+      shell: bash.exe
+    steps:
+      - run:
+          name: Keep LF line endings
+          command: git config --global core.autocrlf false
+      - checkout
+      - run:
+          name: Install Node LTS
+          command: |
+            nvm install lts
+            nvm use lts
+      - run:
+          name: Node and npm version
+          command: node --version && npm --version
+      - install
+      - test
+
   release_package:
     resource_class: small
     executor:
@@ -80,11 +102,18 @@ workflows:
             - nodejs-install
             - devex_cli
 
+      - test_windows:
+          name: Test on Windows
+          context:
+            - nodejs-install
+            - devex_cli
+
       - release_package:
           name: Release
           context: nodejs-lib-release
           requires:
             - Test and scan
+            - Test on Windows
           filters:
             branches:
               only:
