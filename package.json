@@ -2,9 +2,15 @@
   "name": "@snyk/cli-interface",
   "description": "Snyk CLI interface definitions",
   "homepage": "https://github.com/snyk/snyk-cli-interface",
+  "bugs": {
+    "url": "https://github.com/snyk/snyk-cli-interface/issues"
+  },
   "repository": {
     "type": "git",
-    "url": "https://github.com/snyk/snyk-cli-interface"
+    "url": "https://github.com/snyk/snyk-cli-interface.git"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "main": "index.js",
   "files": [
