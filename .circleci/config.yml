@@ -78,6 +78,7 @@ jobs:
     resource_class: small
     executor:
       name: docker-node
+      version: "24.15"
     steps:
       - checkout
       - install
