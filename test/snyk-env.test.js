@@ -4,226 +4,171 @@ const { describe, test } = require('node:test');
 const assert = require('node:assert/strict');
 const { spawnSync } = require('node:child_process');
 
-const { restoreSystemEnv, cleanSnykEnv } = require('../snyk-env');
+const { cleanSnykEnv } = require('../snyk-env');
 const indexExports = require('../index');
 
-describe('restoreSystemEnv', () => {
-  const proxyRows = [
-    { name: 'saved value set, target absent: uppercase and lowercase target added',
-      env: { SNYK_SYSTEM_HTTP_PROXY: 'corp' },
-      expected: { HTTP_PROXY: 'corp', http_proxy: 'corp', SNYK_SYSTEM_HTTP_PROXY: 'corp' },
-    },
-    { name: 'saved value set, uppercase target present: both casings replaced',
-      env: { HTTP_PROXY: 'internal', SNYK_SYSTEM_HTTP_PROXY: 'corp' },
-      expected: { HTTP_PROXY: 'corp', http_proxy: 'corp', SNYK_SYSTEM_HTTP_PROXY: 'corp' },
-    },
-    { name: 'saved value set, mixed-case targets: only uppercase and lowercase remain',
-      env: { http_proxy: 'a', Http_Proxy: 'b', HTTP_PROXY: 'c', SNYK_SYSTEM_HTTP_PROXY: 'corp' },
-      expected: { HTTP_PROXY: 'corp', http_proxy: 'corp', SNYK_SYSTEM_HTTP_PROXY: 'corp' },
-    },
-    { name: 'empty saved value for lowercase-only target: neither casing present',
-      env: { http_proxy: 'a', SNYK_SYSTEM_HTTP_PROXY: '' },
-      expected: { SNYK_SYSTEM_HTTP_PROXY: '' },
-    },
-    { name: 'OPENSSL_CONF: only uppercase written, lowercase variants removed',
-      env: { OPENSSL_CONF: 'internal', openssl_conf: 'x', SNYK_SYSTEM_OPENSSL_CONF: '/etc/ssl/corp.cnf' },
-      expected: { OPENSSL_CONF: '/etc/ssl/corp.cnf', SNYK_SYSTEM_OPENSSL_CONF: '/etc/ssl/corp.cnf' },
-    },
-    { name: 'empty saved value, target in several casings: all removed',
-      env: { HTTP_PROXY: 'a', http_proxy: 'b', Http_Proxy: 'c', SNYK_SYSTEM_HTTP_PROXY: '' },
-      expected: { SNYK_SYSTEM_HTTP_PROXY: '' },
-    },
-    { name: 'empty saved value, target absent: nothing added',
-      env: { SNYK_SYSTEM_HTTP_PROXY: '' },
-      expected: { SNYK_SYSTEM_HTTP_PROXY: '' },
-    },
-    { name: 'saved value undefined: target casings unchanged',
-      env: { HTTP_PROXY: 'a', http_proxy: 'b' },
-      expected: { HTTP_PROXY: 'a', http_proxy: 'b' },
-    },
-    { name: 'lowercase snyk_system_http_proxy is ignored',
-      env: { HTTP_PROXY: 'a', snyk_system_http_proxy: 'corp' },
-      expected: { HTTP_PROXY: 'a', snyk_system_http_proxy: 'corp' },
-    },
+const PROXY_NAMES = ['HTTP_PROXY', 'HTTPS_PROXY', 'NO_PROXY'];
+
+describe('cleanSnykEnv default and removeSnykVars', () => {
+  const systemEnv = { SNYK_SYSTEM_HTTP_PROXY: 'corp', SNYK_SYSTEM_OPENSSL_CONF: '/corp.cnf' };
+  const rows = [
+    { name: 'removes SNYK_TOKEN', env: { PATH: '/usr/bin', SNYK_TOKEN: 'v' }, expected: { PATH: '/usr/bin' } },
+    { name: 'removes lowercase snyk_token', env: { snyk_token: 'v' }, expected: {} },
+    { name: 'removes mixed-case Snyk_Token', env: { Snyk_Token: 'v' }, expected: {} },
+    { name: 'keeps proxies and OPENSSL_CONF as the caller had them',
+      env: { HTTP_PROXY: 'a', http_proxy: 'b', NO_PROXY: 'c', OPENSSL_CONF: 'd', SNYK_SYSTEM_HTTP_PROXY: 'x' },
+      expected: { HTTP_PROXY: 'a', http_proxy: 'b', NO_PROXY: 'c', OPENSSL_CONF: 'd' } },
+    { name: 'keeps names that only contain SNYK', env: { MY_SNYK_THING: 'x', XSNYK_TOKEN: 'x' },
+      expected: { MY_SNYK_THING: 'x', XSNYK_TOKEN: 'x' } },
+    { name: 'removeSnykVars: false keeps SNYK_* and restores nothing', options: { removeSnykVars: false },
+      env: { PATH: '/usr/bin', HTTP_PROXY: 'a', SNYK_TOKEN: 't', snyk_token: 't', SNYK_SYSTEM_HTTP_PROXY: 'corp' },
+      expected: { PATH: '/usr/bin', HTTP_PROXY: 'a', SNYK_TOKEN: 't', snyk_token: 't', SNYK_SYSTEM_HTTP_PROXY: 'corp' } },
   ];
 
-  for (const row of proxyRows) {
+  for (const row of rows) {
     test(row.name, () => {
-      assert.deepEqual(restoreSystemEnv(row.env, row.env), row.expected);
+      assert.deepEqual(cleanSnykEnv(row.env, systemEnv, row.options), row.expected);
     });
   }
+});
 
-  // Each lowercase-capable target: only lowercase originally, and both casings originally.
-  for (const [target, systemKey] of [
-    ['HTTP_PROXY', 'SNYK_SYSTEM_HTTP_PROXY'],
-    ['HTTPS_PROXY', 'SNYK_SYSTEM_HTTPS_PROXY'],
-    ['NO_PROXY', 'SNYK_SYSTEM_NO_PROXY'],
-  ]) {
-    const lower = target.toLowerCase();
-    const mixed = target[0] + target.slice(1).toLowerCase();
-
-    test(`${target}: only ${lower} originally, both casings written`, () => {
-      const env = { [target]: 'internal', [systemKey]: 'user' };
-
-      assert.deepEqual(
-        restoreSystemEnv(env, env),
-        { [target]: 'user', [lower]: 'user', [systemKey]: 'user' },
-      );
-    });
-
-    test(`${target}: both casings originally, both equal saved, other casing gone`, () => {
-      const env = { [target]: 'internal', [lower]: 'user', [mixed]: 'x', [systemKey]: 'user' };
-
-      assert.deepEqual(
-        restoreSystemEnv(env, env),
-        { [target]: 'user', [lower]: 'user', [systemKey]: 'user' },
-      );
-    });
-  }
-
-  test('restores all four pairs, including a lowercase no_proxy', () => {
-    const env = {
-      HTTP_PROXY: 'a', HTTPS_PROXY: 'b', no_proxy: 'c', OPENSSL_CONF: 'd',
-      SNYK_SYSTEM_HTTP_PROXY: 'http://corp:3128',
-      SNYK_SYSTEM_HTTPS_PROXY: 'https://corp:3129',
-      SNYK_SYSTEM_NO_PROXY: 'localhost',
-      SNYK_SYSTEM_OPENSSL_CONF: '/etc/ssl/corp.cnf',
-    };
-
-    assert.deepEqual(restoreSystemEnv(env, env), {
-      HTTP_PROXY: 'http://corp:3128',
-      http_proxy: 'http://corp:3128',
-      HTTPS_PROXY: 'https://corp:3129',
-      https_proxy: 'https://corp:3129',
-      NO_PROXY: 'localhost',
-      no_proxy: 'localhost',
-      OPENSSL_CONF: '/etc/ssl/corp.cnf',
-      SNYK_SYSTEM_HTTP_PROXY: 'http://corp:3128',
-      SNYK_SYSTEM_HTTPS_PROXY: 'https://corp:3129',
-      SNYK_SYSTEM_NO_PROXY: 'localhost',
-      SNYK_SYSTEM_OPENSSL_CONF: '/etc/ssl/corp.cnf',
-    });
-  });
-
-  test('changes only the targets of the one system key that is set', () => {
-    const env = { HTTP_PROXY: 'a', HTTPS_PROXY: 'b', NO_PROXY: 'c', OPENSSL_CONF: 'd', SNYK_SYSTEM_NO_PROXY: 'localhost' };
-
-    assert.deepEqual(restoreSystemEnv(env, env), {
-      HTTP_PROXY: 'a', HTTPS_PROXY: 'b', NO_PROXY: 'localhost', no_proxy: 'localhost', OPENSSL_CONF: 'd', SNYK_SYSTEM_NO_PROXY: 'localhost',
-    });
-  });
-
-  const systemEnvRows = [
-    { name: 'takes the saved value from systemEnv, not env',
+describe('restoreProxy', () => {
+  const rows = [
+    { name: 'writes the saved value when the target is absent',
+      env: {}, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: 'corp' }, expected: { HTTP_PROXY: 'corp' } },
+    { name: 'writes an empty saved value as "" over an existing target',
+      env: { HTTP_PROXY: 'internal' }, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: '' }, expected: { HTTP_PROXY: '' } },
+    { name: 'writes an empty saved value as "" when the target is absent',
+      env: {}, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: '' }, expected: { HTTP_PROXY: '' } },
+    { name: 'leaves an uppercase target alone when the saved value is undefined',
+      env: { HTTP_PROXY: 'internal' }, systemEnv: {}, expected: { HTTP_PROXY: 'internal' } },
+    { name: 'adds nothing when the saved value is undefined and the target is absent',
+      env: {}, systemEnv: {}, expected: {} },
+    { name: 'leaves a mixed-case target alone',
+      env: { Http_Proxy: 'b' }, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: 'corp' }, expected: { Http_Proxy: 'b', HTTP_PROXY: 'corp' } },
+    { name: 'reads the saved value from systemEnv, not env',
       env: { HTTP_PROXY: 'internal', SNYK_SYSTEM_HTTP_PROXY: 'env-value' },
       systemEnv: { SNYK_SYSTEM_HTTP_PROXY: 'corp' },
-      expected: { HTTP_PROXY: 'corp', http_proxy: 'corp', SNYK_SYSTEM_HTTP_PROXY: 'env-value' },
-    },
-    { name: 'ignores a saved value that only env has when systemEnv is given',
-      env: { HTTP_PROXY: 'internal', SNYK_SYSTEM_HTTP_PROXY: 'env-value' },
-      systemEnv: {},
-      expected: { HTTP_PROXY: 'internal', SNYK_SYSTEM_HTTP_PROXY: 'env-value' },
-    },
-    { name: 'copies no other keys from systemEnv',
-      env: { PATH: '/usr/bin', HTTP_PROXY: 'internal' },
-      systemEnv: { PATH: '/sys', SNYK_TOKEN: 't', SNYK_SYSTEM_HTTP_PROXY: 'corp' },
-      expected: { PATH: '/usr/bin', HTTP_PROXY: 'corp', http_proxy: 'corp' },
-    },
+      expected: { HTTP_PROXY: 'corp', SNYK_SYSTEM_HTTP_PROXY: 'env-value' } },
+    { name: 'ignores a lowercase snyk_system_ key',
+      env: { HTTP_PROXY: 'a' }, systemEnv: { snyk_system_http_proxy: 'corp' }, expected: { HTTP_PROXY: 'a' } },
+    { name: 'does not touch OPENSSL_CONF',
+      env: { OPENSSL_CONF: 'internal' }, systemEnv: { SNYK_SYSTEM_OPENSSL_CONF: '/corp.cnf' }, expected: { OPENSSL_CONF: 'internal' } },
   ];
 
-  for (const row of systemEnvRows) {
-    test(row.name, () => {
-      assert.deepEqual(restoreSystemEnv(row.env, row.systemEnv), row.expected);
-    });
+  for (const name of PROXY_NAMES) {
+    const lower = name.toLowerCase();
+    const systemKey = `SNYK_SYSTEM_${name}`;
+    rows.push(
+      { name: `${name}: restored, lowercase ${lower} left alone`,
+        env: { [name]: 'internal', [lower]: 'a' }, systemEnv: { [systemKey]: 'corp' },
+        expected: { [name]: 'corp', [lower]: 'a' } },
+    );
   }
 
-  test('keeps SNYK_* keys and unrelated keys', () => {
-    const env = {
-      PATH: '/usr/bin', SNYK_TOKEN: 't', snyk_token: 't', SNYK_API: 'https://api.snyk.io',
-      SNYK_SYSTEM_NO_PROXY: 'localhost',
-    };
+  for (const row of rows) {
+    test(row.name, () => {
+      assert.deepEqual(cleanSnykEnv(row.env, row.systemEnv, { restoreProxy: true, removeSnykVars: false }), row.expected);
+    });
+  }
+});
 
-    assert.deepEqual(restoreSystemEnv(env, env), { ...env, NO_PROXY: 'localhost', no_proxy: 'localhost' });
-  });
+describe('restoreOpenSSLConf', () => {
+  const rows = [
+    { name: 'writes the saved value when the target is absent',
+      env: {}, systemEnv: { SNYK_SYSTEM_OPENSSL_CONF: '/corp.cnf' }, expected: { OPENSSL_CONF: '/corp.cnf' } },
+    { name: 'overwrites an existing OPENSSL_CONF',
+      env: { OPENSSL_CONF: 'internal' }, systemEnv: { SNYK_SYSTEM_OPENSSL_CONF: '/corp.cnf' },
+      expected: { OPENSSL_CONF: '/corp.cnf' } },
+    { name: 'writes an empty saved value as ""',
+      env: { OPENSSL_CONF: 'internal' }, systemEnv: { SNYK_SYSTEM_OPENSSL_CONF: '' }, expected: { OPENSSL_CONF: '' } },
+    { name: 'leaves OPENSSL_CONF alone when the saved value is undefined',
+      env: { OPENSSL_CONF: 'internal' }, systemEnv: {}, expected: { OPENSSL_CONF: 'internal' } },
+    { name: 'leaves a lowercase openssl_conf alone',
+      env: { openssl_conf: 'x' }, systemEnv: { SNYK_SYSTEM_OPENSSL_CONF: '/corp.cnf' },
+      expected: { openssl_conf: 'x', OPENSSL_CONF: '/corp.cnf' } },
+    { name: 'does not restore proxies',
+      env: { HTTP_PROXY: 'a' }, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: 'corp' }, expected: { HTTP_PROXY: 'a' } },
+  ];
 
-  test('returns a new object and mutates neither input', () => {
-    const env = { Http_Proxy: 'a', http_proxy: 'b', HTTP_PROXY: 'c', SNYK_SYSTEM_HTTP_PROXY: 'corp' };
-    const systemEnv = { SNYK_SYSTEM_HTTP_PROXY: 'corp' };
-    const envBefore = { ...env };
-    const systemEnvBefore = { ...systemEnv };
+  for (const row of rows) {
+    test(row.name, () => {
+      assert.deepEqual(cleanSnykEnv(row.env, row.systemEnv, { restoreOpenSSLConf: true, removeSnykVars: false }), row.expected);
+    });
+  }
+});
 
-    const result = restoreSystemEnv(env, systemEnv);
+describe('lowercaseProxy', () => {
+  const rows = [
+    { name: 'copies an empty uppercase value as ""', env: { NO_PROXY: '' },
+      expected: { NO_PROXY: '', no_proxy: '' } },
+    { name: 'overwrites an existing lowercase value', env: { HTTPS_PROXY: 'internal', https_proxy: 'old' },
+      expected: { HTTPS_PROXY: 'internal', https_proxy: 'internal' } },
+    { name: 'leaves a lowercase value alone when the uppercase one is undefined', env: { http_proxy: 'a' },
+      expected: { http_proxy: 'a' } },
+    { name: 'leaves a mixed-case name alone', env: { Http_Proxy: 'b', HTTP_PROXY: 'a' },
+      expected: { Http_Proxy: 'b', HTTP_PROXY: 'a', http_proxy: 'a' } },
+    { name: 'does not copy OPENSSL_CONF', env: { OPENSSL_CONF: 'x' }, expected: { OPENSSL_CONF: 'x' } },
+    { name: 'does not read SNYK_SYSTEM_* from systemEnv', env: {},
+      systemEnv: { SNYK_SYSTEM_HTTP_PROXY: 'corp' }, expected: {} },
+  ];
 
-    assert.notEqual(result, env);
-    assert.deepEqual(env, envBefore);
-    assert.deepEqual(systemEnv, systemEnvBefore);
+  for (const name of PROXY_NAMES) {
+    rows.push({ name: `copies ${name} to its lowercase name`,
+      env: { [name]: 'internal' }, expected: { [name]: 'internal', [name.toLowerCase()]: 'internal' } });
+  }
+
+  for (const row of rows) {
+    test(row.name, () => {
+      assert.deepEqual(cleanSnykEnv(row.env, row.systemEnv || {}, { lowercaseProxy: true, removeSnykVars: false }), row.expected);
+    });
+  }
+});
+
+describe('restoreProxy combined with lowercaseProxy', () => {
+  const rows = [
+    { name: 'lowercase gets the restored value, not the caller value',
+      env: { HTTP_PROXY: 'internal', http_proxy: 'old' }, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: 'corp' },
+      expected: { HTTP_PROXY: 'corp', http_proxy: 'corp' } },
+    { name: 'empty saved value is written to both casings',
+      env: { HTTPS_PROXY: 'internal' }, systemEnv: { SNYK_SYSTEM_HTTPS_PROXY: '' },
+      expected: { HTTPS_PROXY: '', https_proxy: '' } },
+    { name: 'uppercase and saved both undefined: lowercase left alone',
+      env: { http_proxy: 'a' }, systemEnv: {}, expected: { http_proxy: 'a' } },
+  ];
+
+  for (const row of rows) {
+    test(row.name, () => {
+      assert.deepEqual(
+        cleanSnykEnv(row.env, row.systemEnv || {}, { restoreProxy: true, lowercaseProxy: true, removeSnykVars: false }),
+        row.expected,
+      );
+    });
+  }
+});
+
+describe('go-bridge options', () => {
+  test('restores HTTP_PROXY and OPENSSL_CONF and keeps SNYK_*', () => {
+    const env = { HTTP_PROXY: 'internal', OPENSSL_CONF: 'internal', SNYK_TOKEN: 't' };
+    const systemEnv = { SNYK_SYSTEM_HTTP_PROXY: 'corp', SNYK_SYSTEM_OPENSSL_CONF: '/corp.cnf' };
+    assert.deepEqual(cleanSnykEnv(env, systemEnv, { restoreProxy: true, restoreOpenSSLConf: true, removeSnykVars: false }),
+      { HTTP_PROXY: 'corp', OPENSSL_CONF: '/corp.cnf', SNYK_TOKEN: 't' });
   });
 });
 
-describe('cleanSnykEnv', () => {
-  for (const name of ['SNYK_TOKEN', 'snyk_token', 'Snyk_Token', 'SNYK_OAUTH_TOKEN', 'SNYK_']) {
-    test(`removes ${name}`, () => {
-      const env = { PATH: '/usr/bin', [name]: 'v' };
-
-      assert.deepEqual(cleanSnykEnv(env, env), { PATH: '/usr/bin' });
-    });
-  }
-
-  test('removes SNYK_SYSTEM_HTTP_PROXY and restores HTTP_PROXY and http_proxy from it', () => {
-    const env = { SNYK_SYSTEM_HTTP_PROXY: 'corp' };
-
-    assert.deepEqual(cleanSnykEnv(env, env), { HTTP_PROXY: 'corp', http_proxy: 'corp' });
-  });
-
-  test('only lowercase http_proxy originally: both casings restored, SNYK_* removed', () => {
-    const env = { HTTP_PROXY: 'internal', SNYK_SYSTEM_HTTP_PROXY: 'user', SNYK_TOKEN: 't' };
-
-    assert.deepEqual(cleanSnykEnv(env, env), { HTTP_PROXY: 'user', http_proxy: 'user' });
-  });
-
-  test('keeps MY_SNYK_THING, XSNYK_TOKEN, PATH and http_proxy without a saved value', () => {
-    const env = { PATH: '/usr/bin', MY_SNYK_THING: 'x', XSNYK_TOKEN: 'x', http_proxy: 'x' };
-
-    assert.deepEqual(cleanSnykEnv(env, env), env);
-  });
-
-  test('restores user proxy values, then removes every SNYK_* key', () => {
-    const env = {
-      PATH: '/usr/bin', SNYK_TOKEN: 't',
-      HTTP_PROXY: 'internal', Http_Proxy: 'internal-mixed', HTTPS_PROXY: 'internal',
-      NO_PROXY: 'internal', OPENSSL_CONF: 'internal',
-      SNYK_SYSTEM_HTTP_PROXY: 'http://corp:3128',
-      SNYK_SYSTEM_HTTPS_PROXY: 'https://corp:3129',
-      SNYK_SYSTEM_NO_PROXY: '',
-      SNYK_SYSTEM_OPENSSL_CONF: '/etc/ssl/corp.cnf',
-    };
-
-    assert.deepEqual(cleanSnykEnv(env, env), {
-      PATH: '/usr/bin',
-      HTTP_PROXY: 'http://corp:3128',
-      http_proxy: 'http://corp:3128',
-      HTTPS_PROXY: 'https://corp:3129',
-      https_proxy: 'https://corp:3129',
-      OPENSSL_CONF: '/etc/ssl/corp.cnf',
-    });
-  });
-
-  test('restores from systemEnv when it is given', () => {
-    const env = { PATH: '/usr/bin', HTTP_PROXY: 'internal' };
-    const systemEnv = { SNYK_SYSTEM_HTTP_PROXY: 'corp', SNYK_TOKEN: 't' };
-
-    assert.deepEqual(cleanSnykEnv(env, systemEnv), { PATH: '/usr/bin', HTTP_PROXY: 'corp', http_proxy: 'corp' });
-  });
-
-  test('returns a new object and mutates neither input', () => {
-    const env = { PATH: '/usr/bin', SNYK_TOKEN: 't', Http_Proxy: 'a', SNYK_SYSTEM_HTTP_PROXY: 'corp' };
-    const systemEnv = { SNYK_SYSTEM_NO_PROXY: 'localhost' };
+describe('inputs', () => {
+  test('cleanSnykEnv returns new objects and mutates neither input', () => {
+    const env = { PATH: '/usr/bin', SNYK_TOKEN: 't', Http_Proxy: 'a', HTTP_PROXY: 'b', OPENSSL_CONF: 'c' };
+    const systemEnv = { SNYK_SYSTEM_HTTP_PROXY: 'corp', SNYK_SYSTEM_OPENSSL_CONF: '/corp.cnf' };
     const envBefore = { ...env };
     const systemEnvBefore = { ...systemEnv };
+    const options = { restoreProxy: true, restoreOpenSSLConf: true, lowercaseProxy: true };
 
-    const result = cleanSnykEnv(env, systemEnv);
+    const result = cleanSnykEnv(env, systemEnv, { ...options, removeSnykVars: false });
+    const cleaned = cleanSnykEnv(env, systemEnv, options);
 
     assert.notEqual(result, env);
+    assert.notEqual(cleaned, env);
     assert.deepEqual(env, envBefore);
     assert.deepEqual(systemEnv, systemEnvBefore);
   });
@@ -235,9 +180,10 @@ describe('cleanSnykEnv', () => {
 
     try {
       const env = { PATH: '/usr/bin' };
+      const options = { restoreProxy: true, restoreOpenSSLConf: true, lowercaseProxy: true };
 
-      assert.deepEqual(cleanSnykEnv(env, env), { PATH: '/usr/bin' });
-      assert.deepEqual(restoreSystemEnv(env, env), { PATH: '/usr/bin' });
+      assert.deepEqual(cleanSnykEnv(env, {}, options), { PATH: '/usr/bin' });
+      assert.deepEqual(cleanSnykEnv(env, {}, { ...options, removeSnykVars: false }), { PATH: '/usr/bin' });
     } finally {
       if (original === undefined) {
         delete process.env[key];
@@ -246,60 +192,12 @@ describe('cleanSnykEnv', () => {
       }
     }
   });
-
-  // This is the test that gives the Windows CI job something Windows-specific to check:
-  // process.env is case-insensitive there, and spawn keeps only one casing of a duplicated name.
-  test('child process receives the user\'s proxy and no SNYK_* variables (real spawn)', () => {
-    // Copy the real env so the child can start on Windows (SystemRoot, PATH, ...),
-    // then drop every proxy and SNYK_* key so the result does not depend on the machine.
-    const env = { ...process.env };
-    for (const key of Object.keys(env)) {
-      if (/^(HTTP_PROXY|HTTPS_PROXY|NO_PROXY)$/i.test(key) || /^SNYK_/i.test(key)) {
-        delete env[key];
-      }
-    }
-
-    // What the Go CLI hands the TS CLI.
-    env.HTTP_PROXY = 'http://snyk:secret-proxy-pw@127.0.0.1:1234';
-    env.HTTPS_PROXY = 'http://snyk:secret-proxy-pw@127.0.0.1:1234';
-    env.http_proxy = 'http://user-proxy:3128';
-    env.SNYK_SYSTEM_HTTP_PROXY = 'http://user-proxy:3128';
-    env.SNYK_SYSTEM_HTTPS_PROXY = 'http://user-proxy:3128';
-    env.SNYK_SYSTEM_NO_PROXY = 'localhost';
-    env.SNYK_TOKEN = 'tok-secret-value';
-    env.snyk_oauth_token = 'oauth-secret-value';
-
-    const childEnv = cleanSnykEnv(env, env);
-    const script =
-      'process.stdout.write(JSON.stringify({ env: process.env, ' +
-      'http: process.env.http_proxy, HTTP: process.env.HTTP_PROXY, ' +
-      'https: process.env.https_proxy, HTTPS: process.env.HTTPS_PROXY, ' +
-      'no: process.env.no_proxy, NO: process.env.NO_PROXY }))';
-    const result = spawnSync(process.execPath, ['-e', script], { env: childEnv, encoding: 'utf8', timeout: 30000 });
-
-    assert.equal(result.status, 0, result.stderr || String(result.error));
-
-    const out = JSON.parse(result.stdout);
-    const userProxy = 'http://user-proxy:3128';
-    assert.equal(out.http, userProxy);
-    assert.equal(out.HTTP, userProxy);
-    assert.equal(out.https, userProxy);
-    assert.equal(out.HTTPS, userProxy);
-    assert.equal(out.no, 'localhost');
-    assert.equal(out.NO, 'localhost');
-    for (const key of Object.keys(out.env)) {
-      assert.doesNotMatch(key, /^snyk_/i);
-    }
-    assert.doesNotMatch(result.stdout, /secret-proxy-pw|tok-secret-value|oauth-secret-value/);
-  });
 });
 
 describe('package exports', () => {
-  test('exports cleanSnykEnv and restoreSystemEnv as functions', () => {
-    assert.equal(typeof indexExports.cleanSnykEnv, 'function');
-    assert.equal(typeof indexExports.restoreSystemEnv, 'function');
+  test('exports cleanSnykEnv and not restoreSystemEnv', () => {
     assert.equal(indexExports.cleanSnykEnv, cleanSnykEnv);
-    assert.equal(indexExports.restoreSystemEnv, restoreSystemEnv);
+    assert.equal('restoreSystemEnv' in indexExports, false);
   });
 
   test('keeps legacy exports', () => {
@@ -307,4 +205,38 @@ describe('package exports', () => {
     assert.equal(typeof indexExports.legacyMonitor, 'object');
     assert.equal(typeof indexExports.legacyCommon, 'object');
   });
+});
+
+// Runs a real child process: it must see the restored uppercase proxy and no SNYK_* variables.
+test('child process receives the user\'s proxy and no SNYK_* variables (real spawn)', () => {
+  // Copy the real env so the child can start on Windows (SystemRoot, PATH, ...),
+  // then drop every proxy and SNYK_* key so the result does not depend on the machine.
+  const env = { ...process.env };
+  for (const key of Object.keys(env)) {
+    if (/^(HTTP_PROXY|HTTPS_PROXY|NO_PROXY)$/i.test(key) || /^SNYK_/i.test(key)) {
+      delete env[key];
+    }
+  }
+
+  // What the Go CLI hands the TS CLI.
+  env.HTTP_PROXY = 'http://snyk:secret-proxy-pw@127.0.0.1:1234';
+  env.HTTPS_PROXY = 'http://snyk:secret-proxy-pw@127.0.0.1:1234';
+  env.SNYK_SYSTEM_HTTP_PROXY = 'http://user-proxy:3128';
+  env.SNYK_SYSTEM_HTTPS_PROXY = 'http://user-proxy:3128';
+  env.SNYK_SYSTEM_NO_PROXY = 'localhost';
+  env.SNYK_TOKEN = 'tok-secret-value';
+  env.snyk_oauth_token = 'oauth-secret-value';
+
+  const childEnv = cleanSnykEnv(env, env, { restoreProxy: true });
+  const script = 'process.stdout.write(JSON.stringify(process.env))';
+  const result = spawnSync(process.execPath, ['-e', script], { env: childEnv, encoding: 'utf8', timeout: 30000 });
+
+  assert.equal(result.status, 0, result.stderr || String(result.error));
+
+  const childVars = JSON.parse(result.stdout);
+  assert.equal(childVars.HTTP_PROXY, 'http://user-proxy:3128');
+  for (const key of Object.keys(childVars)) {
+    assert.doesNotMatch(key, /^SNYK_/i);
+  }
+  assert.doesNotMatch(result.stdout, /secret-proxy-pw|tok-secret-value|oauth-secret-value/);
 });
