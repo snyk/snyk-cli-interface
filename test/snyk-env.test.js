@@ -162,6 +162,84 @@ describe('go-bridge options', () => {
   });
 });
 
+describe('env overrides', () => {
+  const rows = [
+    { name: 'INTERNAL_SNYK_RESTORE_PROXY=true restores proxies when the caller did not pass it',
+      env: { HTTP_PROXY: 'internal' }, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: 'corp', INTERNAL_SNYK_RESTORE_PROXY: 'true' },
+      options: { removeSnykVars: false }, expected: { HTTP_PROXY: 'corp' } },
+    { name: 'LOWERCASE_PROXY=true with restoreProxy: true copies the restored proxy to lowercase',
+      env: { HTTP_PROXY: 'internal' }, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: 'corp', INTERNAL_SNYK_LOWERCASE_PROXY: 'true' },
+      options: { restoreProxy: true, removeSnykVars: false }, expected: { HTTP_PROXY: 'corp', http_proxy: 'corp' } },
+    { name: 'LOWERCASE_PROXY=true with restore off changes nothing',
+      env: { HTTP_PROXY: 'a' }, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: 'corp', INTERNAL_SNYK_LOWERCASE_PROXY: 'true' },
+      options: { removeSnykVars: false }, expected: { HTTP_PROXY: 'a' } },
+    { name: 'LOWERCASE_PROXY=false turns off a caller {lowercase: true}, uppercase is still restored',
+      env: { HTTP_PROXY: 'internal' }, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: 'corp', INTERNAL_SNYK_LOWERCASE_PROXY: 'false' },
+      options: { restoreProxy: { lowercase: true }, removeSnykVars: false }, expected: { HTTP_PROXY: 'corp' } },
+    { name: 'REMOVE_EMPTY_PROXY=true with a saved "" deletes HTTP_PROXY',
+      env: { HTTP_PROXY: 'internal' }, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: '', INTERNAL_SNYK_REMOVE_EMPTY_PROXY: 'true' },
+      options: { restoreProxy: true, removeSnykVars: false }, expected: {} },
+    { name: 'REMOVE_EMPTY_PROXY=true with restore off changes nothing',
+      env: { HTTP_PROXY: 'internal' }, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: '', INTERNAL_SNYK_REMOVE_EMPTY_PROXY: 'true' },
+      options: { removeSnykVars: false }, expected: { HTTP_PROXY: 'internal' } },
+    { name: 'REMOVE_EMPTY_PROXY=false turns off a caller {removeIfEmpty: true}, so "" is written',
+      env: { HTTP_PROXY: 'internal' }, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: '', INTERNAL_SNYK_REMOVE_EMPTY_PROXY: 'false' },
+      options: { restoreProxy: { removeIfEmpty: true }, removeSnykVars: false }, expected: { HTTP_PROXY: '' } },
+    { name: 'RESTORE_PROXY=false turns off a caller restoreProxy object entirely',
+      env: { HTTP_PROXY: 'internal' }, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: 'corp', INTERNAL_SNYK_RESTORE_PROXY: 'false' },
+      options: { restoreProxy: { lowercase: true, removeIfEmpty: true }, removeSnykVars: false },
+      expected: { HTTP_PROXY: 'internal' } },
+    { name: 'RESTORE_PROXY=true with a caller {lowercase: true} keeps lowercase',
+      env: { HTTP_PROXY: 'internal' }, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: 'corp', INTERNAL_SNYK_RESTORE_PROXY: 'true' },
+      options: { restoreProxy: { lowercase: true }, removeSnykVars: false }, expected: { HTTP_PROXY: 'corp', http_proxy: 'corp' } },
+    { name: 'RESTORE_PROXY=true with LOWERCASE_PROXY=true and no caller option gives uppercase and lowercase',
+      env: { HTTP_PROXY: 'internal' },
+      systemEnv: { SNYK_SYSTEM_HTTP_PROXY: 'corp', INTERNAL_SNYK_RESTORE_PROXY: 'true', INTERNAL_SNYK_LOWERCASE_PROXY: 'true' },
+      options: { removeSnykVars: false }, expected: { HTTP_PROXY: 'corp', http_proxy: 'corp' } },
+    { name: 'INTERNAL_SNYK_RESTORE_OPENSSL_CONF=true restores OPENSSL_CONF',
+      env: {}, systemEnv: { SNYK_SYSTEM_OPENSSL_CONF: '/corp.cnf', INTERNAL_SNYK_RESTORE_OPENSSL_CONF: 'true' },
+      options: { removeSnykVars: false }, expected: { OPENSSL_CONF: '/corp.cnf' } },
+    { name: 'INTERNAL_SNYK_REMOVE_SNYK_VARS=false keeps SNYK_* despite the default',
+      env: { PATH: '/usr/bin', SNYK_TOKEN: 't' }, systemEnv: { INTERNAL_SNYK_REMOVE_SNYK_VARS: 'false' },
+      options: undefined, expected: { PATH: '/usr/bin', SNYK_TOKEN: 't' } },
+    { name: 'INTERNAL_SNYK_RESTORE_PROXY=false turns off a restoreProxy the caller passed',
+      env: { HTTP_PROXY: 'internal' }, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: 'corp', INTERNAL_SNYK_RESTORE_PROXY: 'false' },
+      options: { restoreProxy: true, removeSnykVars: false }, expected: { HTTP_PROXY: 'internal' } },
+    { name: 'INTERNAL_SNYK_REMOVE_SNYK_VARS=true removes SNYK_* even when the caller passed removeSnykVars: false',
+      env: { PATH: '/usr/bin', SNYK_TOKEN: 't' }, systemEnv: { INTERNAL_SNYK_REMOVE_SNYK_VARS: 'true' },
+      options: { removeSnykVars: false }, expected: { PATH: '/usr/bin' } },
+    { name: '"1" enables and "0" disables, whichever way the caller set the option',
+      env: { HTTP_PROXY: 'internal', OPENSSL_CONF: 'internal' },
+      systemEnv: {
+        SNYK_SYSTEM_HTTP_PROXY: 'corp', SNYK_SYSTEM_OPENSSL_CONF: '/corp.cnf',
+        INTERNAL_SNYK_RESTORE_PROXY: '1', INTERNAL_SNYK_RESTORE_OPENSSL_CONF: '0',
+      },
+      options: { restoreOpenSSLConf: true, removeSnykVars: false },
+      expected: { HTTP_PROXY: 'corp', OPENSSL_CONF: 'internal' } },
+    { name: 'values are case-insensitive and ignore surrounding whitespace',
+      env: {}, systemEnv: { SNYK_SYSTEM_OPENSSL_CONF: '/corp.cnf', INTERNAL_SNYK_RESTORE_OPENSSL_CONF: ' TRUE ' },
+      options: { removeSnykVars: false }, expected: { OPENSSL_CONF: '/corp.cnf' } },
+    { name: 'an unrecognised value ("yes") leaves the caller option on',
+      env: { HTTP_PROXY: 'internal' }, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: 'corp', INTERNAL_SNYK_RESTORE_PROXY: 'yes' },
+      options: { restoreProxy: true, removeSnykVars: false }, expected: { HTTP_PROXY: 'corp' } },
+    { name: 'an unrecognised value ("flase") does not turn an option on',
+      env: { HTTP_PROXY: 'internal' }, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: 'corp', INTERNAL_SNYK_RESTORE_PROXY: 'flase' },
+      options: undefined, expected: { HTTP_PROXY: 'internal' } },
+    { name: 'an empty value keeps the default (removes SNYK_*)',
+      env: { PATH: '/usr/bin', SNYK_TOKEN: 't' }, systemEnv: { INTERNAL_SNYK_REMOVE_SNYK_VARS: '' },
+      options: undefined, expected: { PATH: '/usr/bin' } },
+    { name: 'an override in env, not systemEnv, has no effect',
+      env: { HTTP_PROXY: 'internal', INTERNAL_SNYK_RESTORE_PROXY: 'true' }, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: 'corp' },
+      options: { removeSnykVars: false }, expected: { HTTP_PROXY: 'internal', INTERNAL_SNYK_RESTORE_PROXY: 'true' } },
+  ];
+
+  for (const row of rows) {
+    test(row.name, () => {
+      assert.deepEqual(cleanSnykEnv(row.env, row.systemEnv, row.options), row.expected);
+    });
+  }
+});
+
 describe('inputs', () => {
   test('cleanSnykEnv returns new objects and mutates neither input', () => {
     const env = { PATH: '/usr/bin', SNYK_TOKEN: 't', Http_Proxy: 'a', HTTP_PROXY: 'b', OPENSSL_CONF: 'c' };
