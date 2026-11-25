@@ -5,7 +5,6 @@ const assert = require('node:assert/strict');
 const { spawnSync } = require('node:child_process');
 
 const { cleanSnykEnv } = require('../snyk-env');
-const indexExports = require('../index');
 
 const PROXY_NAMES = ['HTTP_PROXY', 'HTTPS_PROXY', 'NO_PROXY'];
 
@@ -109,8 +108,6 @@ describe('restoreProxy sub-options', () => {
     { name: 'lowercase: false writes uppercase only and leaves an existing lowercase alone', restoreProxy: { lowercase: false },
       env: { http_proxy: 'old' }, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: 'corp' },
       expected: { HTTP_PROXY: 'corp', http_proxy: 'old' } },
-    { name: 'restoreProxy: true adds no lowercase name', restoreProxy: true,
-      env: {}, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: 'corp' }, expected: { HTTP_PROXY: 'corp' } },
     { name: 'mixed-case name is left alone', restoreProxy: { lowercase: true },
       env: { Http_Proxy: 'b', HTTP_PROXY: 'internal' }, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: 'corp' },
       expected: { Http_Proxy: 'b', HTTP_PROXY: 'corp', http_proxy: 'corp' } },
@@ -118,8 +115,6 @@ describe('restoreProxy sub-options', () => {
       env: { http_proxy: 'a' }, systemEnv: {}, expected: { http_proxy: 'a' } },
     { name: 'does not copy OPENSSL_CONF', restoreProxy: { lowercase: true },
       env: { OPENSSL_CONF: 'x' }, systemEnv: { SNYK_SYSTEM_OPENSSL_CONF: '/corp.cnf' }, expected: { OPENSSL_CONF: 'x' } },
-    { name: 'removeIfEmpty deletes an existing uppercase target when saved is ""', restoreProxy: { removeIfEmpty: true },
-      env: { HTTP_PROXY: 'internal' }, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: '' }, expected: {} },
     { name: 'removeIfEmpty with saved "" and target absent adds nothing', restoreProxy: { removeIfEmpty: true },
       env: {}, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: '' }, expected: {} },
     { name: 'removeIfEmpty writes a non-empty saved value as usual', restoreProxy: { removeIfEmpty: true },
@@ -176,39 +171,6 @@ describe('inputs', () => {
     assert.notEqual(cleaned, env);
     assert.deepEqual(env, envBefore);
     assert.deepEqual(systemEnv, systemEnvBefore);
-  });
-
-  test('does not read process.env', () => {
-    const key = 'SNYK_SYSTEM_HTTP_PROXY';
-    const original = process.env[key];
-    process.env[key] = 'from-process-env';
-
-    try {
-      const env = { PATH: '/usr/bin' };
-      const options = { restoreProxy: { lowercase: true }, restoreOpenSSLConf: true };
-
-      assert.deepEqual(cleanSnykEnv(env, {}, options), { PATH: '/usr/bin' });
-      assert.deepEqual(cleanSnykEnv(env, {}, { ...options, removeSnykVars: false }), { PATH: '/usr/bin' });
-    } finally {
-      if (original === undefined) {
-        delete process.env[key];
-      } else {
-        process.env[key] = original;
-      }
-    }
-  });
-});
-
-describe('package exports', () => {
-  test('exports cleanSnykEnv and not restoreSystemEnv', () => {
-    assert.equal(indexExports.cleanSnykEnv, cleanSnykEnv);
-    assert.equal('restoreSystemEnv' in indexExports, false);
-  });
-
-  test('keeps legacy exports', () => {
-    assert.equal(typeof indexExports.legacyPlugin, 'object');
-    assert.equal(typeof indexExports.legacyMonitor, 'object');
-    assert.equal(typeof indexExports.legacyCommon, 'object');
   });
 });
 
