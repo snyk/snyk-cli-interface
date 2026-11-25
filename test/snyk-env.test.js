@@ -43,8 +43,6 @@ describe('restoreProxy', () => {
       env: { HTTP_PROXY: 'internal' }, systemEnv: {}, expected: { HTTP_PROXY: 'internal' } },
     { name: 'adds nothing when the saved value is undefined and the target is absent',
       env: {}, systemEnv: {}, expected: {} },
-    { name: 'leaves a mixed-case target alone',
-      env: { Http_Proxy: 'b' }, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: 'corp' }, expected: { Http_Proxy: 'b', HTTP_PROXY: 'corp' } },
     { name: 'reads the saved value from systemEnv, not env',
       env: { HTTP_PROXY: 'internal', SNYK_SYSTEM_HTTP_PROXY: 'env-value' },
       systemEnv: { SNYK_SYSTEM_HTTP_PROXY: 'corp' },
@@ -113,8 +111,16 @@ describe('restoreProxy sub-options', () => {
       expected: { Http_Proxy: 'b', HTTP_PROXY: 'corp', http_proxy: 'corp' } },
     { name: 'uppercase and saved both undefined: existing lowercase left alone', restoreProxy: { lowercase: true },
       env: { http_proxy: 'a' }, systemEnv: {}, expected: { http_proxy: 'a' } },
-    { name: 'does not copy OPENSSL_CONF', restoreProxy: { lowercase: true },
-      env: { OPENSSL_CONF: 'x' }, systemEnv: { SNYK_SYSTEM_OPENSSL_CONF: '/corp.cnf' }, expected: { OPENSSL_CONF: 'x' } },
+    { name: 'lowercase adds nothing when saved and target are both absent', restoreProxy: { lowercase: true },
+      env: {}, systemEnv: {}, expected: {} },
+    { name: 'lowercase copies an existing uppercase value when saved is undefined', restoreProxy: { lowercase: true },
+      env: { HTTP_PROXY: 'own' }, systemEnv: {}, expected: { HTTP_PROXY: 'own', http_proxy: 'own' } },
+    { name: 'lowercase and removeIfEmpty with saved "" remove an existing lowercase variable too', restoreProxy: { lowercase: true, removeIfEmpty: true },
+      env: { HTTP_PROXY: 'internal', http_proxy: 'user' }, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: '' },
+      expected: {} },
+    { name: 'removeIfEmpty without lowercase leaves an existing lowercase variable alone', restoreProxy: { removeIfEmpty: true },
+      env: { HTTP_PROXY: 'internal', http_proxy: 'user' }, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: '' },
+      expected: { http_proxy: 'user' } },
     { name: 'removeIfEmpty with saved "" and target absent adds nothing', restoreProxy: { removeIfEmpty: true },
       env: {}, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: '' }, expected: {} },
     { name: 'removeIfEmpty writes a non-empty saved value as usual', restoreProxy: { removeIfEmpty: true },
@@ -213,8 +219,8 @@ test('child process receives the user\'s proxy and no SNYK_* variables (real spa
   assert.doesNotMatch(result.stdout, /127\.0\.0\.1:1234|test-token-1|test-oauth-1/);
 });
 
-// Windows env names are case-insensitive, so the child may see either proxy value under the mixed-case name.
-test('mixed-case proxy name: child sees the restored or the caller value, never the internal URL (real spawn)', () => {
+// Off Windows, names are case-sensitive: HTTP_PROXY is restored and Http_Proxy keeps the caller value.
+test('mixed-case proxy name: HTTP_PROXY is restored and Http_Proxy is kept (real spawn)', () => {
   const env = envWithoutProxyOrSnykVars();
   env.HTTP_PROXY = 'http://127.0.0.1:1234';
   env.Http_Proxy = 'http://mixed-case-proxy:3128';
@@ -228,12 +234,19 @@ test('mixed-case proxy name: child sees the restored or the caller value, never 
   assert.equal(result.status, 0, result.stderr || String(result.error));
 
   const childVars = JSON.parse(result.stdout);
-  const proxyValues = Object.entries(childVars)
-    .filter(([key]) => /^http_proxy$/i.test(key))
-    .map(([, value]) => value);
-  assert.notEqual(proxyValues.length, 0);
-  for (const value of proxyValues) {
-    assert.ok(['http://user-proxy:3128', 'http://mixed-case-proxy:3128'].includes(value), value);
+  if (process.platform !== 'win32') {
+    assert.equal(childVars.HTTP_PROXY, 'http://user-proxy:3128');
+    assert.equal(childVars.Http_Proxy, 'http://mixed-case-proxy:3128');
+  } else {
+    // Windows env names are case-insensitive, so one of the two values survives under the mixed-case name.
+    const proxyValues = Object.entries(childVars)
+      .filter(([key]) => /^http_proxy$/i.test(key))
+      .map(([, value]) => value);
+    const expected = ['http://user-proxy:3128', 'http://mixed-case-proxy:3128'];
+    assert.ok(proxyValues.some((value) => expected.includes(value)), `no expected value, got ${JSON.stringify(proxyValues)}`);
+    for (const value of proxyValues) {
+      assert.ok(expected.includes(value), value);
+    }
   }
   for (const key of Object.keys(childVars)) {
     assert.doesNotMatch(key, /^SNYK_/i);

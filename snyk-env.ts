@@ -11,6 +11,7 @@ export interface SnykEnvOptions {
    * `lowercase` copies each proxy variable that is set after the restore to its lowercase name;
    * when a saved value is missing from systemEnv this includes the value `env` already had.
    * `removeIfEmpty` removes a variable whose saved value is "" instead of writing "".
+   * With `lowercase` it also removes the lowercase name.
    * Other casings, such as Http_Proxy, stay as they are. On Windows the child may see either value.
    */
   restoreProxy?: boolean | ProxyRestoreOptions;
@@ -35,6 +36,7 @@ function restoreFromSystemEnv(
   systemEnv: ChildProcessEnv,
   name: string,
   removeIfEmpty = false,
+  alsoLowercase = false,
 ): void {
   const saved = systemEnv['SNYK_SYSTEM_' + name];
   if (saved === undefined) {
@@ -42,6 +44,9 @@ function restoreFromSystemEnv(
   }
   if (saved === '' && removeIfEmpty) {
     delete result[name];
+    if (alsoLowercase) {
+      delete result[name.toLowerCase()];
+    }
   } else {
     result[name] = saved;
   }
@@ -64,7 +69,7 @@ export function cleanSnykEnv(
     const proxy: ProxyRestoreOptions =
       typeof options.restoreProxy === 'object' ? options.restoreProxy : {};
     for (const name of PROXY_NAMES) {
-      restoreFromSystemEnv(result, systemEnv, name, proxy.removeIfEmpty);
+      restoreFromSystemEnv(result, systemEnv, name, proxy.removeIfEmpty, proxy.lowercase);
     }
     if (proxy.lowercase) {
       for (const name of PROXY_NAMES) {
