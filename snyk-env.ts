@@ -2,13 +2,13 @@ export type ChildProcessEnv = { [key: string]: string | undefined };
 
 export interface SnykEnvOptions {
   /**
-   * Writes HTTP_PROXY, HTTPS_PROXY and NO_PROXY from their SNYK_SYSTEM_* values, "" included.
+   * Writes HTTP_PROXY, HTTPS_PROXY and NO_PROXY from their SNYK_SYSTEM_* values. A missing value counts as "".
    * `lowercase` also copies the restored values to their lowercase names.
    * `removeIfEmpty` removes a variable whose saved value is "" instead of writing "".
    * Other casings, such as Http_Proxy, stay as they are. On Windows the child may see either value.
    */
   restoreProxy?: boolean | { lowercase?: boolean; removeIfEmpty?: boolean };
-  /** Writes OPENSSL_CONF from SNYK_SYSTEM_OPENSSL_CONF, "" included. */
+  /** Writes OPENSSL_CONF from SNYK_SYSTEM_OPENSSL_CONF, "" included. A missing value leaves OPENSSL_CONF as it is. */
   restoreOpenSSLConf?: boolean;
   /**
    * Removes every SNYK_* variable (any casing). Defaults to true. With false, nothing is removed,
@@ -35,7 +35,7 @@ function restoreFromSystemEnv(result: ChildProcessEnv, systemEnv: ChildProcessEn
  * Returns a copy of `env` with the given options applied, then SNYK_* variables (any casing)
  * removed unless `removeSnykVars` is false. Pass no options to remove SNYK_* only.
  * `systemEnv` is where SNYK_SYSTEM_* values are read from, normally `process.env`. They are not
- * read from `env`. If a saved value is missing from `systemEnv`, the variable stays as it is.
+ * read from `env`.
  */
 export function cleanSnykEnv(
   env: ChildProcessEnv,
@@ -48,10 +48,7 @@ export function cleanSnykEnv(
     const proxy: { lowercase?: boolean; removeIfEmpty?: boolean } =
       typeof options.restoreProxy === 'object' ? options.restoreProxy : {};
     for (const name of PROXY_NAMES) {
-      const saved = systemEnv['SNYK_SYSTEM_' + name];
-      if (saved === undefined) {
-        continue;
-      }
+      const saved = systemEnv['SNYK_SYSTEM_' + name] ?? '';
       if (saved === '' && proxy.removeIfEmpty) {
         delete result[name];
       } else {
