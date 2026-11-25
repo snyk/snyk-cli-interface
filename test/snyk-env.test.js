@@ -8,9 +8,6 @@ const { cleanSnykEnv } = require('../snyk-env');
 const indexExports = require('../index');
 
 const PROXY_NAMES = ['HTTP_PROXY', 'HTTPS_PROXY', 'NO_PROXY'];
-// With restoreProxy on, a proxy with no SNYK_SYSTEM_* value is written as "". Spread these into `expected`.
-const EMPTY_PROXIES = { HTTP_PROXY: '', HTTPS_PROXY: '', NO_PROXY: '' };
-const EMPTY_PROXIES_LOWERCASE = { http_proxy: '', https_proxy: '', no_proxy: '' };
 
 describe('cleanSnykEnv default and removeSnykVars', () => {
   const systemEnv = { SNYK_SYSTEM_HTTP_PROXY: 'corp', SNYK_SYSTEM_OPENSSL_CONF: '/corp.cnf' };
@@ -38,27 +35,25 @@ describe('cleanSnykEnv default and removeSnykVars', () => {
 describe('restoreProxy', () => {
   const rows = [
     { name: 'writes the saved value when the target is absent',
-      env: {}, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: 'corp' }, expected: { ...EMPTY_PROXIES, HTTP_PROXY: 'corp' } },
+      env: {}, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: 'corp' }, expected: { HTTP_PROXY: 'corp' } },
     { name: 'writes an empty saved value as "" over an existing target',
-      env: { HTTP_PROXY: 'internal' }, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: '' }, expected: { ...EMPTY_PROXIES, HTTP_PROXY: '' } },
+      env: { HTTP_PROXY: 'internal' }, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: '' }, expected: { HTTP_PROXY: '' } },
     { name: 'writes an empty saved value as "" when the target is absent',
-      env: {}, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: '' }, expected: { ...EMPTY_PROXIES, HTTP_PROXY: '' } },
-    { name: 'writes "" over an uppercase target when the saved value is undefined',
-      env: { HTTP_PROXY: 'internal' }, systemEnv: {}, expected: { ...EMPTY_PROXIES } },
-    { name: 'writes "" when the saved value is undefined and the target is absent',
-      env: {}, systemEnv: {}, expected: { ...EMPTY_PROXIES } },
+      env: {}, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: '' }, expected: { HTTP_PROXY: '' } },
+    { name: 'leaves an uppercase target alone when the saved value is undefined',
+      env: { HTTP_PROXY: 'internal' }, systemEnv: {}, expected: { HTTP_PROXY: 'internal' } },
+    { name: 'adds nothing when the saved value is undefined and the target is absent',
+      env: {}, systemEnv: {}, expected: {} },
     { name: 'leaves a mixed-case target alone',
-      env: { Http_Proxy: 'b' }, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: 'corp' },
-      expected: { Http_Proxy: 'b', ...EMPTY_PROXIES, HTTP_PROXY: 'corp' } },
+      env: { Http_Proxy: 'b' }, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: 'corp' }, expected: { Http_Proxy: 'b', HTTP_PROXY: 'corp' } },
     { name: 'reads the saved value from systemEnv, not env',
       env: { HTTP_PROXY: 'internal', SNYK_SYSTEM_HTTP_PROXY: 'env-value' },
       systemEnv: { SNYK_SYSTEM_HTTP_PROXY: 'corp' },
-      expected: { ...EMPTY_PROXIES, HTTP_PROXY: 'corp', SNYK_SYSTEM_HTTP_PROXY: 'env-value' } },
-    { name: 'ignores a lowercase snyk_system_ key and writes "" for the undefined saved value',
-      env: { HTTP_PROXY: 'a' }, systemEnv: { snyk_system_http_proxy: 'corp' }, expected: { ...EMPTY_PROXIES } },
+      expected: { HTTP_PROXY: 'corp', SNYK_SYSTEM_HTTP_PROXY: 'env-value' } },
+    { name: 'ignores a lowercase snyk_system_ key',
+      env: { HTTP_PROXY: 'a' }, systemEnv: { snyk_system_http_proxy: 'corp' }, expected: { HTTP_PROXY: 'a' } },
     { name: 'does not touch OPENSSL_CONF',
-      env: { OPENSSL_CONF: 'internal' }, systemEnv: { SNYK_SYSTEM_OPENSSL_CONF: '/corp.cnf' },
-      expected: { ...EMPTY_PROXIES, OPENSSL_CONF: 'internal' } },
+      env: { OPENSSL_CONF: 'internal' }, systemEnv: { SNYK_SYSTEM_OPENSSL_CONF: '/corp.cnf' }, expected: { OPENSSL_CONF: 'internal' } },
   ];
 
   for (const name of PROXY_NAMES) {
@@ -67,9 +62,7 @@ describe('restoreProxy', () => {
     rows.push(
       { name: `${name}: restored, lowercase ${lower} left alone`,
         env: { [name]: 'internal', [lower]: 'a' }, systemEnv: { [systemKey]: 'corp' },
-        expected: { ...EMPTY_PROXIES, [name]: 'corp', [lower]: 'a' } },
-      { name: `${name}: missing saved value writes "" over the existing ${name}`,
-        env: { [name]: 'internal' }, systemEnv: {}, expected: { ...EMPTY_PROXIES } },
+        expected: { [name]: 'corp', [lower]: 'a' } },
     );
   }
 
@@ -109,23 +102,22 @@ describe('restoreProxy sub-options', () => {
   const rows = [
     { name: 'lowercase gets the restored value, not the caller value', restoreProxy: { lowercase: true },
       env: { HTTP_PROXY: 'internal', http_proxy: 'old' }, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: 'corp' },
-      expected: { ...EMPTY_PROXIES, ...EMPTY_PROXIES_LOWERCASE, HTTP_PROXY: 'corp', http_proxy: 'corp' } },
+      expected: { HTTP_PROXY: 'corp', http_proxy: 'corp' } },
     { name: 'empty saved value is written to both casings', restoreProxy: { lowercase: true },
       env: { HTTPS_PROXY: 'internal' }, systemEnv: { SNYK_SYSTEM_HTTPS_PROXY: '' },
-      expected: { ...EMPTY_PROXIES, ...EMPTY_PROXIES_LOWERCASE } },
+      expected: { HTTPS_PROXY: '', https_proxy: '' } },
     { name: 'lowercase: false writes uppercase only and leaves an existing lowercase alone', restoreProxy: { lowercase: false },
       env: { http_proxy: 'old' }, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: 'corp' },
-      expected: { ...EMPTY_PROXIES, HTTP_PROXY: 'corp', http_proxy: 'old' } },
+      expected: { HTTP_PROXY: 'corp', http_proxy: 'old' } },
     { name: 'restoreProxy: true adds no lowercase name', restoreProxy: true,
-      env: {}, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: 'corp' }, expected: { ...EMPTY_PROXIES, HTTP_PROXY: 'corp' } },
+      env: {}, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: 'corp' }, expected: { HTTP_PROXY: 'corp' } },
     { name: 'mixed-case name is left alone', restoreProxy: { lowercase: true },
       env: { Http_Proxy: 'b', HTTP_PROXY: 'internal' }, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: 'corp' },
-      expected: { Http_Proxy: 'b', ...EMPTY_PROXIES, ...EMPTY_PROXIES_LOWERCASE, HTTP_PROXY: 'corp', http_proxy: 'corp' } },
-    { name: 'undefined saved values write "" and lowercase copies it over an existing lowercase', restoreProxy: { lowercase: true },
-      env: { http_proxy: 'a' }, systemEnv: {}, expected: { ...EMPTY_PROXIES, ...EMPTY_PROXIES_LOWERCASE } },
+      expected: { Http_Proxy: 'b', HTTP_PROXY: 'corp', http_proxy: 'corp' } },
+    { name: 'uppercase and saved both undefined: existing lowercase left alone', restoreProxy: { lowercase: true },
+      env: { http_proxy: 'a' }, systemEnv: {}, expected: { http_proxy: 'a' } },
     { name: 'does not copy OPENSSL_CONF', restoreProxy: { lowercase: true },
-      env: { OPENSSL_CONF: 'x' }, systemEnv: { SNYK_SYSTEM_OPENSSL_CONF: '/corp.cnf' },
-      expected: { ...EMPTY_PROXIES, ...EMPTY_PROXIES_LOWERCASE, OPENSSL_CONF: 'x' } },
+      env: { OPENSSL_CONF: 'x' }, systemEnv: { SNYK_SYSTEM_OPENSSL_CONF: '/corp.cnf' }, expected: { OPENSSL_CONF: 'x' } },
     { name: 'removeIfEmpty deletes an existing uppercase target when saved is ""', restoreProxy: { removeIfEmpty: true },
       env: { HTTP_PROXY: 'internal' }, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: '' }, expected: {} },
     { name: 'removeIfEmpty with saved "" and target absent adds nothing', restoreProxy: { removeIfEmpty: true },
@@ -134,10 +126,10 @@ describe('restoreProxy sub-options', () => {
       env: { HTTP_PROXY: 'internal' }, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: 'corp' }, expected: { HTTP_PROXY: 'corp' } },
     { name: 'removeIfEmpty leaves other casings alone', restoreProxy: { removeIfEmpty: true },
       env: { http_proxy: 'x' }, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: '' }, expected: { http_proxy: 'x' } },
-    { name: 'removeIfEmpty with saved undefined removes an existing HTTP_PROXY', restoreProxy: { removeIfEmpty: true },
-      env: { HTTP_PROXY: 'internal' }, systemEnv: {}, expected: {} },
+    { name: 'removeIfEmpty with saved undefined leaves the target alone', restoreProxy: { removeIfEmpty: true },
+      env: { HTTP_PROXY: 'internal' }, systemEnv: {}, expected: { HTTP_PROXY: 'internal' } },
     { name: 'removeIfEmpty: false writes "" over an existing target', restoreProxy: { removeIfEmpty: false },
-      env: { HTTP_PROXY: 'internal' }, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: '' }, expected: { ...EMPTY_PROXIES } },
+      env: { HTTP_PROXY: 'internal' }, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: '' }, expected: { HTTP_PROXY: '' } },
     { name: 'lowercase and removeIfEmpty with saved "" write neither casing', restoreProxy: { lowercase: true, removeIfEmpty: true },
       env: { HTTP_PROXY: 'internal' }, systemEnv: { SNYK_SYSTEM_HTTP_PROXY: '' }, expected: {} },
   ];
@@ -145,11 +137,9 @@ describe('restoreProxy sub-options', () => {
   for (const name of PROXY_NAMES) {
     rows.push({ name: `copies restored ${name} to its lowercase name`, restoreProxy: { lowercase: true },
       env: { [name]: 'internal' }, systemEnv: { [`SNYK_SYSTEM_${name}`]: 'corp' },
-      expected: { ...EMPTY_PROXIES, ...EMPTY_PROXIES_LOWERCASE, [name]: 'corp', [name.toLowerCase()]: 'corp' } });
+      expected: { [name]: 'corp', [name.toLowerCase()]: 'corp' } });
     rows.push({ name: `removeIfEmpty deletes ${name} when saved is ""`, restoreProxy: { removeIfEmpty: true },
       env: { [name]: 'internal' }, systemEnv: { [`SNYK_SYSTEM_${name}`]: '' }, expected: {} });
-    rows.push({ name: `removeIfEmpty deletes ${name} when saved is undefined`, restoreProxy: { removeIfEmpty: true },
-      env: { [name]: 'internal' }, systemEnv: {}, expected: {} });
   }
 
   for (const row of rows) {
@@ -167,7 +157,7 @@ describe('go-bridge options', () => {
     const env = { HTTP_PROXY: 'internal', OPENSSL_CONF: 'internal', SNYK_TOKEN: 't' };
     const systemEnv = { SNYK_SYSTEM_HTTP_PROXY: 'corp', SNYK_SYSTEM_OPENSSL_CONF: '/corp.cnf' };
     assert.deepEqual(cleanSnykEnv(env, systemEnv, { restoreProxy: true, restoreOpenSSLConf: true, removeSnykVars: false }),
-      { ...EMPTY_PROXIES, HTTP_PROXY: 'corp', OPENSSL_CONF: '/corp.cnf', SNYK_TOKEN: 't' });
+      { HTTP_PROXY: 'corp', OPENSSL_CONF: '/corp.cnf', SNYK_TOKEN: 't' });
   });
 });
 
@@ -197,9 +187,8 @@ describe('inputs', () => {
       const env = { PATH: '/usr/bin' };
       const options = { restoreProxy: { lowercase: true }, restoreOpenSSLConf: true };
 
-      const expected = { PATH: '/usr/bin', ...EMPTY_PROXIES, ...EMPTY_PROXIES_LOWERCASE };
-      assert.deepEqual(cleanSnykEnv(env, {}, options), expected);
-      assert.deepEqual(cleanSnykEnv(env, {}, { ...options, removeSnykVars: false }), expected);
+      assert.deepEqual(cleanSnykEnv(env, {}, options), { PATH: '/usr/bin' });
+      assert.deepEqual(cleanSnykEnv(env, {}, { ...options, removeSnykVars: false }), { PATH: '/usr/bin' });
     } finally {
       if (original === undefined) {
         delete process.env[key];
