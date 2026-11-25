@@ -11,3 +11,16 @@ export function systemEnvIsRequired(): void {
 
 // @ts-expect-error unknown option keys are rejected (restoreProxy is spelled restoreproxy)
 cleanSnykEnv({}, {}, { restoreproxy: true });
+
+cleanSnykEnv({}, {}, { restoreProxy: true });
+cleanSnykEnv({}, {}, { restoreProxy: { lowercase: true } });
+
+// @ts-expect-error lowercaseProxy is gone; lowercasing is a restoreProxy sub-option
+cleanSnykEnv({}, {}, { lowercaseProxy: true });
+
+cleanSnykEnv({}, {}, { restoreProxy: {} });
+cleanSnykEnv({}, {}, { restoreProxy: { removeIfEmpty: true } });
+cleanSnykEnv({}, {}, { restoreProxy: { lowercase: true, removeIfEmpty: true } });
+
+// @ts-expect-error misspelt restoreProxy sub-option is rejected
+cleanSnykEnv({}, {}, { restoreProxy: { lowercas: true } });
