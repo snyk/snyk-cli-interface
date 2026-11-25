@@ -1,13 +1,19 @@
 export type ChildProcessEnv = { [key: string]: string | undefined };
 
+interface ProxyRestoreOptions {
+  lowercase?: boolean;
+  removeIfEmpty?: boolean;
+}
+
 export interface SnykEnvOptions {
   /**
    * Writes HTTP_PROXY, HTTPS_PROXY and NO_PROXY from their SNYK_SYSTEM_* values, "" included.
-   * `lowercase` also copies the restored values to their lowercase names.
+   * `lowercase` copies each proxy variable that is set after the restore to its lowercase name;
+   * when a saved value is missing from systemEnv this includes the value `env` already had.
    * `removeIfEmpty` removes a variable whose saved value is "" instead of writing "".
    * Other casings, such as Http_Proxy, stay as they are. On Windows the child may see either value.
    */
-  restoreProxy?: boolean | { lowercase?: boolean; removeIfEmpty?: boolean };
+  restoreProxy?: boolean | ProxyRestoreOptions;
   /** Writes OPENSSL_CONF from SNYK_SYSTEM_OPENSSL_CONF, "" included. */
   restoreOpenSSLConf?: boolean;
   /**
@@ -24,9 +30,19 @@ const SNYK_VAR_PATTERN = /^SNYK_/i;
 const PROXY_NAMES: ReadonlyArray<string> = ['HTTP_PROXY', 'HTTPS_PROXY', 'NO_PROXY'];
 const OPENSSL_CONF = 'OPENSSL_CONF';
 
-function restoreFromSystemEnv(result: ChildProcessEnv, systemEnv: ChildProcessEnv, name: string): void {
+function restoreFromSystemEnv(
+  result: ChildProcessEnv,
+  systemEnv: ChildProcessEnv,
+  name: string,
+  removeIfEmpty = false,
+): void {
   const saved = systemEnv['SNYK_SYSTEM_' + name];
-  if (saved !== undefined) {
+  if (saved === undefined) {
+    return;
+  }
+  if (saved === '' && removeIfEmpty) {
+    delete result[name];
+  } else {
     result[name] = saved;
   }
 }
@@ -45,18 +61,10 @@ export function cleanSnykEnv(
   const result: ChildProcessEnv = { ...env };
 
   if (options.restoreProxy) {
-    const proxy: { lowercase?: boolean; removeIfEmpty?: boolean } =
+    const proxy: ProxyRestoreOptions =
       typeof options.restoreProxy === 'object' ? options.restoreProxy : {};
     for (const name of PROXY_NAMES) {
-      const saved = systemEnv['SNYK_SYSTEM_' + name];
-      if (saved === undefined) {
-        continue;
-      }
-      if (saved === '' && proxy.removeIfEmpty) {
-        delete result[name];
-      } else {
-        result[name] = saved;
-      }
+      restoreFromSystemEnv(result, systemEnv, name, proxy.removeIfEmpty);
     }
     if (proxy.lowercase) {
       for (const name of PROXY_NAMES) {
