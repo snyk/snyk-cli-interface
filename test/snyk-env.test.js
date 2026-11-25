@@ -240,13 +240,13 @@ test('child process receives the user\'s proxy and no SNYK_* variables (real spa
   const env = envWithoutProxyOrSnykVars();
 
   // What the Go CLI hands the TS CLI.
-  env.HTTP_PROXY = 'http://snyk:secret-proxy-pw@127.0.0.1:1234';
-  env.HTTPS_PROXY = 'http://snyk:secret-proxy-pw@127.0.0.1:1234';
+  env.HTTP_PROXY = 'http://127.0.0.1:1234';
+  env.HTTPS_PROXY = 'http://127.0.0.1:1234';
   env.SNYK_SYSTEM_HTTP_PROXY = 'http://user-proxy:3128';
   env.SNYK_SYSTEM_HTTPS_PROXY = 'http://user-proxy:3128';
   env.SNYK_SYSTEM_NO_PROXY = 'localhost';
-  env.SNYK_TOKEN = 'tok-secret-value';
-  env.snyk_oauth_token = 'oauth-secret-value';
+  env.SNYK_TOKEN = 'test-token-1';
+  env.snyk_oauth_token = 'test-oauth-1';
 
   const childEnv = cleanSnykEnv(env, env, { restoreProxy: true });
   const script = 'process.stdout.write(JSON.stringify(process.env))';
@@ -259,16 +259,16 @@ test('child process receives the user\'s proxy and no SNYK_* variables (real spa
   for (const key of Object.keys(childVars)) {
     assert.doesNotMatch(key, /^SNYK_/i);
   }
-  assert.doesNotMatch(result.stdout, /secret-proxy-pw|tok-secret-value|oauth-secret-value/);
+  assert.doesNotMatch(result.stdout, /127\.0\.0\.1:1234|test-token-1|test-oauth-1/);
 });
 
 // Windows env names are case-insensitive, so the child may see either proxy value under the mixed-case name.
 test('mixed-case proxy name: child sees the restored or the caller value, never the internal URL (real spawn)', () => {
   const env = envWithoutProxyOrSnykVars();
-  env.HTTP_PROXY = 'http://snyk:secret-proxy-pw@127.0.0.1:1234';
+  env.HTTP_PROXY = 'http://127.0.0.1:1234';
   env.Http_Proxy = 'http://mixed-case-proxy:3128';
   env.SNYK_SYSTEM_HTTP_PROXY = 'http://user-proxy:3128';
-  env.SNYK_TOKEN = 'tok-secret-value';
+  env.SNYK_TOKEN = 'test-token-1';
 
   const childEnv = cleanSnykEnv(env, env, { restoreProxy: true });
   const script = 'process.stdout.write(JSON.stringify(process.env))';
@@ -287,5 +287,5 @@ test('mixed-case proxy name: child sees the restored or the caller value, never 
   for (const key of Object.keys(childVars)) {
     assert.doesNotMatch(key, /^SNYK_/i);
   }
-  assert.doesNotMatch(result.stdout, /secret-proxy-pw|tok-secret-value/);
+  assert.doesNotMatch(result.stdout, /127\.0\.0\.1:1234|test-token-1/);
 });
