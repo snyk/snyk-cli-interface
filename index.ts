@@ -1,10 +1,10 @@
 import {plugin, monitor, common} from './legacy';
-import {cleanSnykEnv, restoreSystemEnv} from './snyk-env';
+import {cleanSnykEnv} from './snyk-env';
 
 export {
     plugin as legacyPlugin,
     monitor as legacyMonitor,
     common as legacyCommon,
     cleanSnykEnv,
-    restoreSystemEnv,
 };
+export type {SnykEnvOptions} from './snyk-env';
